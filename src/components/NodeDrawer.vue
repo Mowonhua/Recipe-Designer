@@ -15,7 +15,24 @@
           </div>
           <div class="form-group">
             <label>Icon</label>
-            <n-input v-model:value="editIcon" size="small" placeholder="Emoji or text" />
+            <div class="icon-editor">
+              <div class="icon-preview">
+                <img v-if="isEditIconImage" :src="editIcon" class="preview-img" />
+                <span v-else class="preview-text">{{ editIcon || '—' }}</span>
+              </div>
+              <n-input v-model:value="editIcon" size="small" placeholder="Emoji, text, or image" class="icon-input" />
+              <n-button size="tiny" @click="triggerUpload" class="upload-btn" title="Upload image">
+                <ImageUp :size="14" />
+              </n-button>
+              <input
+                ref="fileInputEl"
+                type="file"
+                accept="image/png,image/jpeg,image/svg+xml,image/webp"
+                hidden
+                @change="onIconFileChange"
+              />
+              <n-button v-if="editIcon" size="tiny" text @click="editIcon = ''" class="clear-btn" title="Clear">×</n-button>
+            </div>
           </div>
           <div class="form-group">
             <label>Color</label>
@@ -166,6 +183,7 @@ import {
   NDrawer, NDrawerContent, NTabs, NTabPane,
   NInput, NInputNumber, NSwitch, NSelect, NButton,
 } from 'naive-ui';
+import { ImageUp } from 'lucide-vue-next';
 import { v4 as uuidv4 } from 'uuid';
 import { useStore } from '../store';
 import type { ItemNode, RecipeSlot, FlowEdge } from '../store';
@@ -189,6 +207,29 @@ const editColor = ref('#3b82f6');
 const editTags = ref<string[]>([]);
 const editIsRaw = ref(false);
 const newTag = ref('');
+const fileInputEl = ref<HTMLInputElement | null>(null);
+const isEditIconImage = computed(() => editIcon.value.startsWith('data:image/'));
+
+function triggerUpload() {
+  fileInputEl.value?.click();
+}
+
+function onIconFileChange(e: Event) {
+  const input = e.target as HTMLInputElement;
+  const file = input.files?.[0];
+  if (!file) return;
+  if (file.size > 256 * 1024) {
+    alert('Image too large. Please use an image under 256KB.');
+    input.value = '';
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = () => {
+    editIcon.value = reader.result as string;
+    input.value = '';
+  };
+  reader.readAsDataURL(file);
+}
 
 interface SlotEdit {
   name: string;
@@ -379,6 +420,45 @@ function flyTo(nodeId: string) {
   letter-spacing: 0.5px;
   font-weight: 500;
   margin-bottom: 4px;
+}
+
+.icon-editor {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.icon-preview {
+  width: 32px; height: 32px;
+  min-width: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-input);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+.preview-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.preview-text {
+  font-size: 14px;
+  line-height: 1;
+}
+.icon-input {
+  flex: 1;
+}
+.upload-btn {
+  min-width: 28px;
+  height: 28px;
+  padding: 0;
+}
+.clear-btn {
+  font-size: 16px;
+  color: var(--text-muted);
+  min-width: 20px;
 }
 
 .form-row { display: flex; gap: 8px; }

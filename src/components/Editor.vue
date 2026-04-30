@@ -347,6 +347,23 @@ function onConnect(connection: Connection) {
 
   let targetSlotId = connection.targetHandle || '';
 
+  // New-slot sentinel: user dropped on "+ New Slot" in the panel
+  if (targetSlotId === '__new_slot__') {
+    const newSlot: RecipeSlot = {
+      id: uuidv4(),
+      name: '__new__',
+      time: 1,
+      machine_id: store.machines[0]?.id || '',
+      tags: [],
+      primary_output_quantity: 1,
+      secondary_outputs: [],
+      catalyst_mode: 'none',
+    };
+    store.addSlot(connection.target, newSlot);
+    targetSlotId = newSlot.id;
+    store.setActiveSlot(connection.target, newSlot.id);
+  }
+
   // Lazy slot creation: if target has no slots, create a default one
   if (!targetSlotId) {
     const targetNode = store.nodes.find(n => n.id === connection.target);

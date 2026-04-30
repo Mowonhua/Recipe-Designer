@@ -15,7 +15,10 @@
         <!-- Header -->
         <div class="popover-header">
           <div class="header-left">
-            <span class="node-icon">{{ node.icon || '📦' }}</span>
+            <span class="node-icon">
+              <img v-if="iconIsImage" :src="node.icon" class="icon-img" />
+              <span v-else>{{ node.icon || '📦' }}</span>
+            </span>
             <div>
               <div class="node-name">{{ node.name }}</div>
               <div class="node-tags">{{ node.tags.join(' · ') || 'no tags' }}</div>
@@ -98,6 +101,8 @@ function close() { emit('close'); }
 function openDrawer() { emit('openDrawer'); }
 function switchSlot(slotId: string) { emit('switchSlot', slotId); }
 
+const iconIsImage = computed(() => props.node?.icon?.startsWith('data:image/') ?? false);
+
 function machineName(machineId: string): string {
   return store.machines.find(m => m.id === machineId)?.name || 'Unknown';
 }
@@ -175,6 +180,14 @@ const activeByproducts = computed(() => {
   background: rgba(255,255,255,0.04);
   border-radius: 8px;
   font-size: 16px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.node-icon .icon-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 8px;
 }
 .node-name {
   font-size: 13px; font-weight: 600; color: var(--text-primary);
