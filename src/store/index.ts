@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
-// uuid imported in consuming modules
+import { v4 as uuidv4 } from 'uuid';
+import { findOrphans, type ValidationError } from './validation';
 
 // --- Data Models (from Design Scheme) ---
 export interface GlobalEffect {
@@ -233,6 +234,8 @@ class SetActiveSlotCommand implements Command {
 
 // --- Store ---
 
+const OFF_CANVAS = -9999;
+
 export const useStore = defineStore('recipe-designer', () => {
   const version = ref<number>(1);
   const meta = ref<ProjectMeta>({
@@ -247,6 +250,16 @@ export const useStore = defineStore('recipe-designer', () => {
   const nodes = ref<ItemNode[]>([]);
   const edges = ref<FlowEdge[]>([]);
   const groups = ref<Group[]>([]);
+
+  const validationErrors = ref<ValidationError[]>([]);
+
+  function clearValidation() {
+    validationErrors.value = [];
+  }
+
+  function setValidationErrors(errors: ValidationError[]) {
+    validationErrors.value = errors;
+  }
 
   // Command History Stack
   const history = ref<Command[]>([]);
@@ -411,6 +424,146 @@ export const useStore = defineStore('recipe-designer', () => {
     changeCounter.value++;
   }
 
+  function updateMachine(id: string, changes: Partial<Machine>) {
+    const machine = machines.value.find(m => m.id === id);
+    if (machine) {
+      Object.assign(machine, changes);
+      changeCounter.value++;
+    }
+  }
+
+  function deleteMachine(id: string) {
+    const idx = machines.value.findIndex(m => m.id === id);
+    if (idx >= 0) {
+      machines.value.splice(idx, 1);
+      changeCounter.value++;
+    }
+  }
+
+  function addItem(name: string, color?: string, tags?: string[]): ItemNode {
+    const node: ItemNode = {
+      id: uuidv4(),
+      name,
+      color: color || '#3b82f6',
+      tags: tags || [],
+      is_raw_material: null,
+      slots: [],
+      position: { x: OFF_CANVAS, y: OFF_CANVAS },
+    };
+    commit(new AddNodeCommand(node));
+    changeCounter.value++;
+    return node;
+  }
+
+  function updateItem(id: string, changes: Partial<ItemNode>) {
+    const node = nodes.value.find(n => n.id === id);
+    if (node) {
+      const { id: _, slots: __, position: ___, active_slot_id: ____, ...safeChanges } = changes as any;
+      Object.assign(node, safeChanges);
+      changeCounter.value++;
+    }
+  }
+
+  function placeNodeOnCanvas(nodeId: string, position: { x: number; y: number }) {
+    const node = nodes.value.find(n => n.id === nodeId);
+    if (node && node.position.x === OFF_CANVAS && node.position.y === OFF_CANVAS) {
+      node.position = position;
+      changeCounter.value++;
+    }
+  }
+
+  function isNodeOnCanvas(nodeId: string): boolean {
+    const node = nodes.value.find(n => n.id === nodeId);
+    return node ? !(node.position.x === OFF_CANVAS && node.position.y === OFF_CANVAS) : false;
+  }
+
+  function addGroup(name: string, childIds: string[]) {
+    const group: Group = {
+      id: uuidv4(),
+      name,
+      children: childIds,
+      collapsed: false,
+    };
+    groups.value.push(group);
+    changeCounter.value++;
+  }
+
+  function removeGroup(id: string) {
+    const idx = groups.value.findIndex(g => g.id === id);
+    if (idx >= 0) {
+      groups.value.splice(idx, 1);
+      changeCounter.value++;
+    }
+  }
+
+  function toggleGroupCollapse(id: string) {
+    const group = groups.value.find(g => g.id === id);
+    if (group) {
+      group.collapsed = !group.collapsed;
+      if (group.collapsed) {
+        updateGroupSummary(id);
+      }
+    }
+  }
+
+  function updateGroupSummary(groupId: string) {
+    const group = groups.value.find(g => g.id === groupId);
+    if (!group) return;
+
+    const childSet = new Set(group.children);
+
+    const inputMap = new Map<string, number>();
+    const outputMap = new Map<string, number>();
+
+    for (const edge of edges.value) {
+      const sourceInside = childSet.has(edge.source);
+      const targetInside = childSet.has(edge.target);
+
+      if (!sourceInside && targetInside) {
+        inputMap.set(edge.source, (inputMap.get(edge.source) || 0) + edge.quantity);
+      } else if (sourceInside && !targetInside) {
+        outputMap.set(edge.target, (outputMap.get(edge.target) || 0) + edge.quantity);
+      }
+    }
+
+    let maxTime = 0;
+    for (const nodeId of group.children) {
+      const node = nodes.value.find(n => n.id === nodeId);
+      if (!node) continue;
+      for (const slot of node.slots) {
+        if (slot.time > maxTime) maxTime = slot.time;
+      }
+    }
+
+    group.summary_recipe = {
+      inputs: Array.from(inputMap.entries()).map(([item_id, quantity]) => ({ item_id, quantity })),
+      outputs: Array.from(outputMap.entries()).map(([item_id, quantity]) => ({ item_id, quantity })),
+      time: maxTime,
+    };
+  }
+
+  function deleteOrphans() {
+    const state = getState();
+    const orphans = findOrphans(state);
+    const ids = orphans.map(n => n.id);
+    if (ids.length > 0) {
+      deleteNodes(ids);
+    }
+  }
+
+  // Helper to construct State object for pure functions
+  function getState(): State {
+    return {
+      version: version.value,
+      meta: meta.value,
+      global_effects: global_effects.value,
+      machines: machines.value,
+      nodes: nodes.value,
+      edges: edges.value,
+      groups: groups.value,
+    };
+  }
+
   function seedData(data: { nodes: ItemNode[]; edges: FlowEdge[]; machines: Machine[] }) {
     nodes.value = data.nodes;
     edges.value = data.edges;
@@ -429,6 +582,7 @@ export const useStore = defineStore('recipe-designer', () => {
     nodes,
     edges,
     groups,
+    validationErrors,
     commit,
     undo,
     redo,
@@ -446,6 +600,20 @@ export const useStore = defineStore('recipe-designer', () => {
     deleteSlot,
     setActiveSlot,
     addMachine,
+    updateMachine,
+    deleteMachine,
+    addItem,
+    updateItem,
+    placeNodeOnCanvas,
+    isNodeOnCanvas,
+    addGroup,
+    removeGroup,
+    toggleGroupCollapse,
+    updateGroupSummary,
+    deleteOrphans,
+    getState,
+    clearValidation,
+    setValidationErrors,
     seedData,
   };
 });
