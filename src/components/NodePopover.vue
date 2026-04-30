@@ -3,7 +3,6 @@
     <div
       v-if="visible && node"
       class="popover-backdrop"
-      @click="close"
     >
       <div
         ref="cardRef"
@@ -143,7 +142,7 @@ const activeByproducts = computed(() => {
   position: fixed;
   inset: 0;
   z-index: 100;
-  background: transparent;
+  pointer-events: none;
 }
 
 .popover-card {
@@ -156,6 +155,7 @@ const activeByproducts = computed(() => {
   box-shadow: 0 12px 32px rgba(0,0,0,0.5);
   font-family: var(--font-ui), sans-serif;
   transform: translate(-50%, -110%);
+  pointer-events: auto;
 }
 
 .popover-header {

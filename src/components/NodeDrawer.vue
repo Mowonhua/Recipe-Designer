@@ -190,6 +190,17 @@ const editTags = ref<string[]>([]);
 const editIsRaw = ref(false);
 const newTag = ref('');
 
+interface SlotEdit {
+  name: string;
+  time: number;
+  primary_output_quantity: number;
+  machine_id: string;
+  tags: string[];
+  catalyst_mode: 'none' | 'optional' | 'required';
+}
+const editSlots = reactive<Record<string, SlotEdit>>({});
+const slotTagInputs = reactive<Record<string, string>>({});
+
 const colorPresets = ['#f0883e', '#58a6ff', '#3fb950', '#e0555a', '#a371f7', '#e6c34a', '#768390', '#f778ba'];
 
 watch(() => props.node, (n) => {
@@ -233,17 +244,6 @@ function saveProperties() {
 }
 
 // --- Slots editing ---
-interface SlotEdit {
-  name: string;
-  time: number;
-  primary_output_quantity: number;
-  machine_id: string;
-  tags: string[];
-  catalyst_mode: 'none' | 'optional' | 'required';
-}
-const editSlots = reactive<Record<string, SlotEdit>>({});
-const slotTagInputs = reactive<Record<string, string>>({});
-
 watch(() => props.node?.slots, (slots) => {
   if (!slots) return;
   for (const s of slots) {
@@ -450,5 +450,24 @@ function flyTo(nodeId: string) {
 
 .no-data {
   font-size: 10px; color: #484f5a; font-style: italic; padding: 8px 0;
+}
+</style>
+
+<style>
+.n-drawer.n-drawer--right .n-drawer-content {
+  background: var(--panel-bg) !important;
+}
+.n-drawer .n-drawer-header {
+  background: var(--panel-bg) !important;
+  border-bottom-color: var(--panel-border) !important;
+}
+.n-drawer .n-drawer-body {
+  background: var(--panel-bg) !important;
+}
+.n-drawer .n-tabs .n-tabs-nav {
+  background: var(--panel-bg) !important;
+}
+.n-drawer .n-tabs .n-tabs-bar {
+  background: var(--panel-border) !important;
 }
 </style>

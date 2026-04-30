@@ -1,15 +1,17 @@
 ﻿<template>
-  <n-message-provider>
-    <n-notification-provider>
-      <n-dialog-provider>
-        <Editor />
-      </n-dialog-provider>
-    </n-notification-provider>
-  </n-message-provider>
+  <n-config-provider :theme="darkTheme">
+    <n-message-provider>
+      <n-notification-provider>
+        <n-dialog-provider>
+          <Editor />
+        </n-dialog-provider>
+      </n-notification-provider>
+    </n-message-provider>
+  </n-config-provider>
 </template>
 
 <script setup lang="ts">
-import { NMessageProvider, NNotificationProvider, NDialogProvider } from 'naive-ui';
+import { NMessageProvider, NNotificationProvider, NDialogProvider, NConfigProvider, darkTheme } from 'naive-ui';
 import Editor from './components/Editor.vue';
 </script>
 

@@ -1,7 +1,7 @@
 <template>
   <div class="editor">
     <DictionaryPanel />
-    <div class="canvas-wrap">
+    <div ref="canvasWrapRef" class="canvas-wrap">
       <div class="canvas-toolbar">
         <button type="button" class="toolbar-btn" @click="store.deleteOrphans()" title="Delete all orphan nodes">
           Clean Orphans
@@ -62,7 +62,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, provide, watch, onMounted, onUnmounted, markRaw } from 'vue';
+import { ref, provide, watch, onMounted, onUnmounted, markRaw, computed } from 'vue';
 import { VueFlow, useVueFlow } from '@vue-flow/core';
 import { Background } from '@vue-flow/background';
 import { Controls } from '@vue-flow/controls';
@@ -88,7 +88,7 @@ import SearchOverlay from './SearchOverlay.vue';
 const store = useStore();
 
 // --- Vue Flow setup ---
-const { setCenter } = useVueFlow();
+const { setCenter, viewport } = useVueFlow();
 
 const nodeTypes: any = { item: markRaw(ItemNode), group: markRaw(GroupNode) };
 
@@ -454,17 +454,27 @@ const showSearch = ref(false);
 // --- Popover state ---
 const popoverVisible = ref(false);
 const popoverNode = ref<any>(null);
-const popoverPosition = ref({ x: 0, y: 0 });
+const canvasWrapRef = ref<HTMLDivElement | null>(null);
+
+const popoverPosition = computed(() => {
+  const node = popoverNode.value;
+  if (!node || !canvasWrapRef.value) return { x: 0, y: 0 };
+  // Read live position from Vue Flow nodes so popover follows during drag
+  const vfNode = nodes.value.find((n: any) => n.id === node.id);
+  const pos = vfNode ? vfNode.position : node.position;
+  const rect = canvasWrapRef.value.getBoundingClientRect();
+  const vp = viewport.value;
+  const cx = pos.x + 80; // center-top of node
+  const cy = pos.y;
+  return {
+    x: rect.left + cx * vp.zoom + vp.x,
+    y: rect.top + cy * vp.zoom + vp.y,
+  };
+});
 
 function onNodeClick(event: any) {
   const nodeData = event.node.data;
   if (!nodeData || !nodeData.id) return;
-  const evt = event.event;
-  if ('clientX' in evt) {
-    popoverPosition.value = { x: evt.clientX, y: evt.clientY - 12 };
-  } else {
-    popoverPosition.value = { x: 0, y: 0 };
-  }
   popoverNode.value = nodeData;
   popoverVisible.value = true;
 }
