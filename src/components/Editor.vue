@@ -638,10 +638,10 @@ onUnmounted(() => {
   position: absolute; top: 8px; left: 8px; z-index: 10;
 }
 .toolbar-btn {
-  background: #161b22; border: 1px solid #30363d;
-  border-radius: 6px; padding: 5px 10px;
-  color: #8b949e; font-size: 10px; cursor: pointer;
+  background: var(--bg-surface); border: 1px solid var(--border-default);
+  border-radius: var(--radius-md); padding: 5px 10px;
+  color: var(--text-muted); font-size: 10px; cursor: pointer;
   font-family: var(--font-ui), sans-serif;
 }
-.toolbar-btn:hover { color: #e6edf3; border-color: #58a6ff; }
+.toolbar-btn:hover { color: var(--text-primary); border-color: var(--accent-link); }
 </style>

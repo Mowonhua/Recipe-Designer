@@ -148,11 +148,11 @@ const activeByproducts = computed(() => {
 .popover-card {
   position: fixed;
   width: 260px;
-  background: #161b22;
-  border: 1px solid #30363d;
-  border-radius: 12px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-2xl);
   padding: 16px;
-  box-shadow: 0 12px 32px rgba(0,0,0,0.5);
+  box-shadow: var(--shadow-card);
   font-family: var(--font-ui), sans-serif;
   transform: translate(-50%, -110%);
   pointer-events: auto;
@@ -177,23 +177,23 @@ const activeByproducts = computed(() => {
   font-size: 16px;
 }
 .node-name {
-  font-size: 13px; font-weight: 600; color: #e6edf3;
+  font-size: 13px; font-weight: 600; color: var(--text-primary);
 }
 .node-tags {
-  font-size: 9px; color: #8b949e;
+  font-size: 9px; color: var(--text-muted);
   font-family: var(--font-mono), monospace;
 }
 .details-btn {
-  font-size: 10px; color: #58a6ff;
-  background: #1f2937; border: 1px solid #1f2937;
+  font-size: 10px; color: var(--accent-link);
+  background: var(--bg-toolbar-btn); border: 1px solid var(--bg-toolbar-btn);
   border-radius: 5px; padding: 4px 8px;
   cursor: pointer; white-space: nowrap;
   font-family: var(--font-ui), sans-serif;
 }
-.details-btn:hover { background: #2d3748; }
+.details-btn:hover { background: var(--bg-toolbar-btn-hover); }
 
 .section-label {
-  font-size: 9px; color: #8b949e;
+  font-size: 9px; color: var(--text-muted);
   text-transform: uppercase; letter-spacing: 0.8px;
   font-weight: 600; margin-bottom: 6px; margin-top: 12px;
 }
@@ -213,17 +213,17 @@ const activeByproducts = computed(() => {
 .slot-row:hover { background: rgba(255,255,255,0.03); }
 .slot-row.active {
   background: rgba(240,136,62,0.08);
-  border-color: #f0883e;
+  border-color: var(--accent-orange);
 }
-.slot-name { font-size: 11px; color: #e6edf3; font-weight: 500; }
+.slot-name { font-size: 11px; color: var(--text-primary); font-weight: 500; }
 .slot-meta {
-  font-size: 9px; color: #8b949e;
+  font-size: 9px; color: var(--text-muted);
   font-family: var(--font-mono), monospace;
   margin-top: 2px;
 }
 .active-dot {
-  width: 6px; height: 6px; border-radius: 50%;
-  background: #f0883e; flex-shrink: 0;
+  width: 6px; height: 6px; border-radius: var(--radius-full);
+  background: var(--accent-orange); flex-shrink: 0;
 }
 
 .io-list { display: flex; flex-direction: column; gap: 3px; max-height: 120px; overflow-y: auto; }
@@ -232,17 +232,17 @@ const activeByproducts = computed(() => {
   padding: 3px 0; font-size: 10px;
 }
 .io-dot {
-  width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0;
+  width: 6px; height: 6px; border-radius: var(--radius-full); flex-shrink: 0;
 }
-.io-name { color: #e6edf3; flex: 1; }
+.io-name { color: var(--text-primary); flex: 1; }
 .io-qty {
-  color: #8b949e;
+  color: var(--text-muted);
   font-family: var(--font-mono), monospace;
 }
-.io-row.byproduct .io-name { color: #58a6ff; }
-.io-row.byproduct .io-qty { color: #58a6ff; }
+.io-row.byproduct .io-name { color: var(--accent-link); }
+.io-row.byproduct .io-qty { color: var(--accent-link); }
 
 .no-data {
-  font-size: 10px; color: #484f5a; font-style: italic;
+  font-size: 10px; color: var(--text-disabled); font-style: italic;
 }
 </style>

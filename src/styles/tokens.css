@@ -1,0 +1,72 @@
+/* ============================================
+   Design Tokens — single source of truth for
+   colors, radii, shadows, and transitions.
+   Imported once in main.ts; available everywhere.
+   ============================================ */
+
+:root {
+  /* ---- Backgrounds ---- */
+  --bg-color: #0f1115;
+  --bg-grid: #1a1d24;
+  --panel-bg: #1c1e26;          /* kept for backward compat — panels, drawers */
+  --bg-surface: #161b22;        /* cards, popovers, toolbar, collapsed groups */
+  --bg-deep: #0d1117;           /* slot cards, summary columns */
+  --bg-input: #121316;          /* form inputs */
+  --bg-header: #22242e;         /* panel headers */
+  --bg-context: #252830;        /* context menus */
+  --bg-hover: #2a2d35;          /* hover / highlight */
+  --bg-toolbar-btn: #1f2937;    /* details button, etc. */
+  --bg-toolbar-btn-hover: #2d3748;
+
+  /* ---- Borders ---- */
+  --border-default: #30363d;    /* card/popover/input borders */
+  --panel-border: #2a2d35;      /* kept for backward compat — panel / section borders */
+  --border-subtle: #21262d;     /* subtle separators, slot cards */
+
+  /* ---- Text ---- */
+  --text-primary: #e6edf3;      /* headings, prominent text */
+  --text-main: #e2e8f0;         /* body text */
+  --text-muted: #8b949e;        /* labels, meta, muted content */
+  --text-dimmed: #64748b;       /* dimmer variant (subtitles, placeholders) */
+  --text-disabled: #484f5a;     /* empty states, hints, italic notes */
+
+  /* ---- Accent ---- */
+  --accent-blue: #3b82f6;       /* primary actions, focus rings, active tabs */
+  --accent-link: #58a6ff;       /* links, byproduct text, tag pills, group borders */
+  --accent-orange: #f0883e;     /* active slot border, active dot */
+  --accent-amber: #f59e0b;      /* warm accent (reserved) */
+  --accent-green: #10b981;      /* badges */
+  --accent-green-bright: #3fb950; /* active status */
+  --accent-red: #ef4444;        /* danger / delete */
+
+  /* ---- Border Radii ---- */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 10px;
+  --radius-2xl: 12px;
+  --radius-full: 50%;
+
+  /* ---- Shadows ---- */
+  --shadow-card: 0 12px 32px rgba(0, 0, 0, 0.5);
+  --shadow-modal: 0 20px 60px rgba(0, 0, 0, 0.5);
+  --shadow-menu: 0 8px 24px rgba(0, 0, 0, 0.4);
+  --shadow-node: 0 4px 6px -1px rgb(0 0 0 / 0.4), 0 2px 4px -2px rgb(0 0 0 / 0.4);
+  --shadow-node-hover: 0 10px 15px -3px rgb(0 0 0 / 0.4), 0 4px 6px -4px rgb(0 0 0 / 0.4);
+  --shadow-group: 0 4px 16px rgba(0, 0, 0, 0.3);
+
+  /* ---- Transitions ---- */
+  --transition-fast: 0.1s;
+  --transition-normal: 0.15s;
+  --transition-slow: 0.25s;
+  --ease-bounce: cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* ---- Typography ---- */
+  --font-ui: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+  /* ---- Layout ---- */
+  --node-width: 160px;
+  --node-min-height: 48px;
+}

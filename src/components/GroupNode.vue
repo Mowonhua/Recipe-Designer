@@ -68,18 +68,18 @@ function getItemName(itemId: string): string {
 <style scoped>
 .group-node {
   background: rgba(88,166,255,0.03);
-  border: 1px dashed #58a6ff;
-  border-radius: 12px;
+  border: 1px dashed var(--accent-link);
+  border-radius: var(--radius-2xl);
   padding: 12px;
   min-width: 200px;
   font-family: var(--font-ui), sans-serif;
 }
 .group-node.collapsed {
   border-style: solid;
-  border-color: #30363d;
+  border-color: var(--border-default);
   border-width: 2px;
-  background: #161b22;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+  background: var(--bg-surface);
+  box-shadow: var(--shadow-group);
 }
 
 .group-header {
@@ -88,39 +88,39 @@ function getItemName(itemId: string): string {
 }
 .group-icon { font-size: 14px; }
 .group-name {
-  font-size: 13px; font-weight: 600; color: #e6edf3;
+  font-size: 13px; font-weight: 600; color: var(--text-primary);
 }
-.group-count { font-size: 9px; color: #8b949e; }
+.group-count { font-size: 9px; color: var(--text-muted); }
 .group-toggle {
-  margin-left: auto; font-size: 9px; color: #58a6ff;
+  margin-left: auto; font-size: 9px; color: var(--accent-link);
   cursor: pointer; background: none; border: none;
   font-family: var(--font-ui), sans-serif;
 }
 
 .group-summary { display: flex; gap: 12px; }
 .summary-col {
-  flex: 1; background: #0d1117;
-  border-radius: 6px; padding: 8px;
+  flex: 1; background: var(--bg-deep);
+  border-radius: var(--radius-md); padding: 8px;
 }
 .summary-label {
-  font-size: 9px; color: #8b949e; font-weight: 600;
+  font-size: 9px; color: var(--text-muted); font-weight: 600;
   margin-bottom: 4px;
 }
 .summary-item {
   display: flex; justify-content: space-between;
-  font-size: 9px; color: #e6edf3;
+  font-size: 9px; color: var(--text-primary);
   font-family: var(--font-mono), monospace;
   padding: 2px 0;
 }
-.summary-qty { color: #8b949e; }
-.summary-empty { font-size: 9px; color: #484f5a; font-style: italic; }
+.summary-qty { color: var(--text-muted); }
+.summary-empty { font-size: 9px; color: var(--text-disabled); font-style: italic; }
 
 .group-footer {
   margin-top: 8px; padding-top: 6px;
-  border-top: 1px solid #21262d;
+  border-top: 1px solid var(--border-subtle);
 }
 .hint {
-  font-size: 8px; color: #484f5a;
+  font-size: 8px; color: var(--text-disabled);
   font-family: var(--font-mono), monospace;
 }
 </style>

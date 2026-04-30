@@ -62,7 +62,21 @@ Demo factory production line: raw materials (Iron Ore, Copper Ore, Coal, Water, 
 
 ### Styling
 
-Dark theme via CSS custom properties in `App.vue`. Fonts: Plus Jakarta Sans (UI) and JetBrains Mono (monospace/edge labels). Vue Flow edge labels use monospace font with dark background. Node visuals use `color-mix(in srgb, ...)` for color tinting based on per-node color.
+**Design tokens** are in `src/styles/tokens.css` — the single source of truth for colors, border radii, shadows, transitions, and typography. Imported once in `main.ts`, available in every component.
+
+**Rule: before writing any hardcoded color, radius, shadow, or transition value in a component `<style>` block, check `tokens.css` first.** If a matching token exists, use the CSS variable. Only hardcode values that are truly one-off and not shared across components.
+
+Key token categories:
+- **Text:** `--text-primary` (`#e6edf3`), `--text-main` (`#e2e8f0`), `--text-muted` (`#8b949e`), `--text-dimmed` (`#64748b`), `--text-disabled` (`#484f5a`)
+- **Backgrounds:** `--bg-color`, `--panel-bg`, `--bg-surface`, `--bg-deep`, `--bg-input`, `--bg-hover`, `--bg-header`, `--bg-context`
+- **Borders:** `--border-default` (`#30363d`), `--panel-border` (`#2a2d35`), `--border-subtle` (`#21262d`)
+- **Accent:** `--accent-blue` (`#3b82f6` focus/primary), `--accent-link` (`#58a6ff` links/byproduct), `--accent-orange` (`#f0883e`), `--accent-green` (`#10b981`), `--accent-green-bright` (`#3fb950`), `--accent-red` (`#ef4444`)
+- **Radii:** `--radius-sm` (4px) through `--radius-2xl` (12px), plus `--radius-full` (50%)
+- **Shadows:** `--shadow-card`, `--shadow-modal`, `--shadow-menu`, `--shadow-node`, `--shadow-node-hover`, `--shadow-group`
+- **Transitions:** `--transition-fast/normal/slow`, `--ease-bounce`, `--ease-smooth`
+- **Layout:** `--node-width` (160px), `--node-min-height` (48px)
+
+Dark theme. Fonts: Plus Jakarta Sans (`--font-ui`) and JetBrains Mono (`--font-mono`). Vue Flow edge labels use monospace. Node visuals use `color-mix(in srgb, ...)` with per-node `--node-color`.
 
 ## Key Dependencies
 

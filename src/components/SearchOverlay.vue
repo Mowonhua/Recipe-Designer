@@ -223,8 +223,8 @@ onMounted(async () => {
   max-height: 70vh;
   background: var(--panel-bg);
   border: 1px solid var(--panel-border);
-  border-radius: 12px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  border-radius: var(--radius-2xl);
+  box-shadow: var(--shadow-modal);
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -251,12 +251,12 @@ onMounted(async () => {
   font-family: var(--font-ui);
 }
 
-.search-input::placeholder { color: #64748b; }
+.search-input::placeholder { color: var(--text-dimmed); }
 
 .shortcut-hint {
-  background: #2a2d35;
+  background: var(--bg-hover);
   color: var(--text-muted);
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   padding: 2px 6px;
   font-size: 10px;
   font-family: var(--font-mono);
@@ -274,15 +274,15 @@ onMounted(async () => {
   border: none;
   color: var(--text-muted);
   padding: 4px 10px;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   font-size: 12px;
   cursor: pointer;
   font-family: var(--font-ui);
-  transition: background 0.1s;
+  transition: background var(--transition-fast);
 }
-.filter-btn:hover { background: #2a2d35; }
+.filter-btn:hover { background: var(--bg-hover); }
 .filter-btn.active {
-  background: #3b82f6;
+  background: var(--accent-blue);
   color: #fff;
 }
 
@@ -295,7 +295,7 @@ onMounted(async () => {
 .group-header {
   padding: 6px 14px;
   font-size: 10px;
-  color: #64748b;
+  color: var(--text-dimmed);
   text-transform: uppercase;
   letter-spacing: 0.5px;
   font-weight: 600;
@@ -307,11 +307,11 @@ onMounted(async () => {
   gap: 10px;
   padding: 8px 14px;
   cursor: pointer;
-  transition: background 0.1s;
+  transition: background var(--transition-fast);
 }
 .result-row:hover,
 .result-row.highlighted {
-  background: #2a2d35;
+  background: var(--bg-hover);
 }
 
 .result-dot {
@@ -328,13 +328,13 @@ onMounted(async () => {
 }
 
 .result-subtitle {
-  color: #64748b;
+  color: var(--text-dimmed);
   font-size: 11px;
   margin-left: -6px;
 }
 
 .result-type {
-  color: #64748b;
+  color: var(--text-dimmed);
   font-size: 11px;
 }
 
@@ -351,7 +351,7 @@ onMounted(async () => {
   padding: 6px 14px;
   border-top: 1px solid var(--panel-border);
   font-size: 10px;
-  color: #64748b;
+  color: var(--text-dimmed);
   font-family: var(--font-mono);
 }
 </style>

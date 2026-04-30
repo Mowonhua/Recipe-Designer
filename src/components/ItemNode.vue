@@ -66,29 +66,25 @@ function slotLeft(slotId: string): string {
 
 <style scoped>
 .item-node {
-  width: 160px;
-  min-height: 48px;
+  width: var(--node-width);
+  min-height: var(--node-min-height);
   background: linear-gradient(135deg, color-mix(in srgb, var(--node-color) 8%, #1f222d), color-mix(in srgb, var(--node-color) 2%, #15171d));
   border: 1px solid color-mix(in srgb, var(--node-color) 20%, #2a2d36);
   border-top: 1px solid color-mix(in srgb, var(--node-color) 50%, #444);
-  border-radius: 10px;
+  border-radius: var(--radius-xl);
   padding: 10px 14px;
   display: flex;
   align-items: center;
   justify-content: center;
   position: relative;
   cursor: pointer;
-  box-shadow: inset 0 1px 1px rgb(255 255 255 / 0.05),
-              0 4px 6px -1px rgb(0 0 0 / 0.4), 
-              0 2px 4px -2px rgb(0 0 0 / 0.4);
-  transition: all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  box-shadow: inset 0 1px 1px rgb(255 255 255 / 0.05), var(--shadow-node);
+  transition: all var(--transition-slow) var(--ease-bounce);
 }
 
 .item-node:hover {
   border-color: color-mix(in srgb, var(--node-color) 60%, #444);
-  box-shadow: inset 0 1px 1px rgb(255 255 255 / 0.08),
-              0 10px 15px -3px rgb(0 0 0 / 0.4), 
-              0 4px 6px -4px rgb(0 0 0 / 0.4);
+  box-shadow: inset 0 1px 1px rgb(255 255 255 / 0.08), var(--shadow-node-hover);
   transform: translateY(-2px);
 }
 
@@ -124,9 +120,9 @@ function slotLeft(slotId: string): string {
   width: 10px;
   height: 10px;
   background-color: var(--node-color, #94a3b8);
-  border: 2px solid #1a1d24;
+  border: 2px solid var(--bg-grid);
   top: -5px;
-  border-radius: 50%;
+  border-radius: var(--radius-full);
 }
 
 :deep(.vue-flow__handle.source-handle:hover) {
@@ -140,7 +136,7 @@ function slotLeft(slotId: string): string {
   height: 8px;
   background-color: #0b0c10;
   border: 1px solid color-mix(in srgb, var(--node-color) 40%, #333a45);
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   bottom: -4px;
   box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.8);
 }
@@ -170,13 +166,13 @@ function slotLeft(slotId: string): string {
   bottom: -30px;
   transform: translateX(-50%);
   font-size: 9.5px;
-  color: #a1a1aa;
+  color: var(--text-muted);
   white-space: nowrap;
   background: rgba(15, 17, 21, 0.85);
   backdrop-filter: blur(4px);
   padding: 1px 8px;
-  border-radius: 6px;
-  border: 1px solid color-mix(in srgb, var(--node-color) 25%, #2a2d36);
+  border-radius: var(--radius-md);
+  border: 1px solid color-mix(in srgb, var(--node-color) 25%, var(--panel-border));
   pointer-events: none;
   font-family: var(--font-mono), monospace;
   box-shadow: 0 2px 4px rgba(0,0,0,0.5);
