@@ -503,6 +503,7 @@ export const useStore = defineStore('recipe-designer', () => {
       if (group.collapsed) {
         updateGroupSummary(id);
       }
+      changeCounter.value++;
     }
   }
 

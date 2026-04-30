@@ -217,9 +217,14 @@ function syncFromStore() {
     }
   }
 
-  // Remove collapsed children from canvas
+  const collapsedGroupIds = new Set(
+    store.groups.filter(g => g.collapsed).map(g => g.id)
+  );
+
+  // Remove collapsed children and stale group nodes from canvas
   nodes.value = nodes.value.filter((n: any) => {
     if (n.type === 'item' && collapsedChildren.has(n.id)) return false;
+    if (n.type === 'group' && !collapsedGroupIds.has(n.id)) return false;
     return true;
   });
 
@@ -490,6 +495,7 @@ const drawerNode = ref<any>(null);
 function onNodeDoubleClick(event: any) {
   const nodeData = event.node.data;
   if (!nodeData || !nodeData.id) return;
+  if (event.node.type === 'group') return;  // groups don't have drawers
   drawerNode.value = store.nodes.find(n => n.id === nodeData.id) || null;
   drawerVisible.value = true;
   popoverVisible.value = false;
