@@ -2,6 +2,11 @@
   <div class="editor">
     <DictionaryPanel />
     <div class="canvas-wrap">
+      <div class="canvas-toolbar">
+        <button type="button" class="toolbar-btn" @click="store.deleteOrphans()" title="Delete all orphan nodes">
+          Clean Orphans
+        </button>
+      </div>
       <VueFlow
         v-model:nodes="nodes"
         v-model:edges="edges"
@@ -15,6 +20,11 @@
         @node-drag-start="onDragStart"
         @node-drag="onDrag"
         @node-drag-stop="onDragStop"
+        @node-click="onNodeClick"
+        @node-double-click="onNodeDoubleClick"
+        @dragover="onDragOverCanvas"
+        @drop="onDropOnCanvas"
+        @pane-click="closePopover"
         @connect="onConnect"
         @nodes-change="onNodesChange"
         @edges-change="onEdgesChange"
@@ -29,7 +39,23 @@
         <template #node-item="nodeProps">
           <ItemNode v-bind="nodeProps" />
         </template>
+        <template #node-group="nodeProps">
+          <GroupNode v-bind="nodeProps" />
+        </template>
       </VueFlow>
+      <NodePopover
+        :visible="popoverVisible"
+        :node="popoverNode"
+        :position="popoverPosition"
+        @close="closePopover"
+        @open-drawer="onPopoverOpenDrawer"
+        @switch-slot="onPopoverSwitchSlot"
+      />
+      <NodeDrawer
+        :visible="drawerVisible"
+        :node="drawerNode"
+        @update:visible="(v: boolean) => { if (!v) closeDrawer(); }"
+      />
     </div>
     <SearchOverlay v-if="showSearch" @close="showSearch = false" />
   </div>
@@ -53,6 +79,9 @@ import type { FlowEdge, RecipeSlot } from '../store';
 import { useStore } from '../store';
 import { mockNodes, mockEdges, mockMachines } from '../data/mock-data';
 import ItemNode from './ItemNode.vue';
+import NodePopover from './NodePopover.vue';
+import NodeDrawer from './NodeDrawer.vue';
+import GroupNode from './GroupNode.vue';
 import DictionaryPanel from './DictionaryPanel.vue';
 import SearchOverlay from './SearchOverlay.vue';
 
@@ -61,7 +90,7 @@ const store = useStore();
 // --- Vue Flow setup ---
 const { setCenter } = useVueFlow();
 
-const nodeTypes: any = { item: markRaw(ItemNode) };
+const nodeTypes: any = { item: markRaw(ItemNode), group: markRaw(GroupNode) };
 
 const defaultEdgeOptions = {
   type: 'simplebezier',
@@ -177,11 +206,57 @@ function syncFromStore() {
       edges.value.push(buildFlowEdge(se));
     }
   }
+
+  // Sync collapsed group nodes
+  const collapsedChildren = new Set<string>();
+  for (const group of store.groups) {
+    if (group.collapsed) {
+      for (const childId of group.children) {
+        collapsedChildren.add(childId);
+      }
+    }
+  }
+
+  // Remove collapsed children from canvas
+  nodes.value = nodes.value.filter((n: any) => {
+    if (n.type === 'item' && collapsedChildren.has(n.id)) return false;
+    return true;
+  });
+
+  // Add group nodes for collapsed groups
+  for (const group of store.groups) {
+    if (!group.collapsed) continue;
+    const existing = nodes.value.find((n: any) => n.id === group.id);
+    // Calculate approximate center from children positions
+    let cx = 0, cy = 0, count = 0;
+    for (const childId of group.children) {
+      const child = store.nodes.find(n => n.id === childId);
+      if (child) { cx += child.position.x; cy += child.position.y; count++; }
+    }
+    if (count > 0) { cx /= count; cy /= count; }
+
+    if (existing) {
+      existing.position = { x: cx - 120, y: cy - 40 };
+    } else {
+      nodes.value.push({
+        id: group.id,
+        type: 'group',
+        position: { x: cx - 120, y: cy - 40 },
+        data: {
+          name: group.name,
+          children: group.children,
+          collapsed: true,
+          summary_recipe: group.summary_recipe,
+        },
+        style: { width: '240px', zIndex: 5 },
+      });
+    }
+  }
 }
 
 // Watch for structural changes
 watch(
-  () => [store.nodes.length, store.edges.length, store.changeCounter],
+  () => [store.nodes.length, store.edges.length, store.changeCounter, store.groups.length],
   () => { syncFromStore(); },
   { flush: 'sync' },
 );
@@ -371,9 +446,130 @@ function onSearchFlyTo(e: Event) {
 // --- Search overlay ---
 const showSearch = ref(false);
 
+// --- Popover state ---
+const popoverVisible = ref(false);
+const popoverNode = ref<any>(null);
+const popoverPosition = ref({ x: 0, y: 0 });
+
+function onNodeClick(event: any) {
+  const nodeData = event.node.data;
+  if (!nodeData || !nodeData.id) return;
+  const evt = event.event;
+  if ('clientX' in evt) {
+    popoverPosition.value = { x: evt.clientX, y: evt.clientY - 12 };
+  } else {
+    popoverPosition.value = { x: 0, y: 0 };
+  }
+  popoverNode.value = nodeData;
+  popoverVisible.value = true;
+}
+
+function closePopover() {
+  popoverVisible.value = false;
+  popoverNode.value = null;
+}
+
+function onPopoverSwitchSlot(slotId: string) {
+  if (!popoverNode.value) return;
+  store.setActiveSlot(popoverNode.value.id, slotId);
+}
+
+function onPopoverOpenDrawer() {
+  const nodeId = popoverNode.value?.id;
+  popoverVisible.value = false;
+  if (nodeId) {
+    drawerNode.value = store.nodes.find(n => n.id === nodeId) || null;
+    drawerVisible.value = true;
+  }
+}
+
+// --- Drawer state ---
+const drawerVisible = ref(false);
+const drawerNode = ref<any>(null);
+
+function onNodeDoubleClick(event: any) {
+  const nodeData = event.node.data;
+  if (!nodeData || !nodeData.id) return;
+  drawerNode.value = store.nodes.find(n => n.id === nodeData.id) || null;
+  drawerVisible.value = true;
+  popoverVisible.value = false;
+}
+
+function closeDrawer() {
+  drawerVisible.value = false;
+  drawerNode.value = null;
+}
+
+// --- Canvas drop ---
+function onDragOverCanvas(event: DragEvent) {
+  if (event.dataTransfer?.types.includes('text/plain')) {
+    event.preventDefault();
+  }
+}
+
+function onDropOnCanvas(event: DragEvent) {
+  const raw = event.dataTransfer?.getData('text/plain');
+  if (!raw) return;
+  try {
+    const data = JSON.parse(raw);
+    if (data.type !== 'dictionary-item') return;
+    const nodeId = data.nodeId;
+    if (!store.isNodeOnCanvas(nodeId)) {
+      // Place at drop position — approximate flow coords
+      const canvasEl = document.querySelector('.canvas-wrap');
+      const rect = canvasEl?.getBoundingClientRect();
+      if (!rect) return;
+      const x = event.clientX - rect.left - rect.width / 2;
+      const y = event.clientY - rect.top - rect.height / 2;
+      store.placeNodeOnCanvas(nodeId, { x, y });
+      syncFromStore();
+    } else {
+      // Already on canvas — fly to it
+      const node = store.nodes.find(n => n.id === nodeId);
+      if (node) {
+        window.dispatchEvent(new CustomEvent('search-fly-to', {
+          detail: { x: node.position.x, y: node.position.y },
+        }));
+      }
+    }
+  } catch { /* ignore */ }
+}
+
+// --- Group helpers ---
+function createGroupFromSelection() {
+  const selectedIds = nodes.value
+    .filter((n: any) => n.selected && n.type === 'item')
+    .map((n: any) => n.id as string);
+  if (selectedIds.length < 2) return;
+  const name = prompt('Group name:', 'New Group');
+  if (name && name.trim()) {
+    store.addGroup(name.trim(), selectedIds);
+  }
+}
+
+function disbandSelectedGroup() {
+  const selectedGroups = nodes.value
+    .filter((n: any) => n.selected && n.type === 'group')
+    .map((n: any) => n.id as string);
+  for (const gid of selectedGroups) {
+    store.removeGroup(gid);
+  }
+}
+
 // --- Keyboard shortcuts ---
 function onKeydown(e: KeyboardEvent) {
   const ctrl = e.ctrlKey || e.metaKey;
+
+  if (ctrl && !e.shiftKey && e.key === 'g') {
+    e.preventDefault();
+    createGroupFromSelection();
+    return;
+  }
+  if (ctrl && e.shiftKey && e.key === 'G') {
+    e.preventDefault();
+    disbandSelectedGroup();
+    return;
+  }
 
   if (ctrl && e.key === 'z') {
     e.preventDefault();
@@ -421,4 +617,15 @@ onUnmounted(() => {
   height: 100%;
   position: relative;
 }
+
+.canvas-toolbar {
+  position: absolute; top: 8px; left: 8px; z-index: 10;
+}
+.toolbar-btn {
+  background: #161b22; border: 1px solid #30363d;
+  border-radius: 6px; padding: 5px 10px;
+  color: #8b949e; font-size: 10px; cursor: pointer;
+  font-family: var(--font-ui), sans-serif;
+}
+.toolbar-btn:hover { color: #e6edf3; border-color: #58a6ff; }
 </style>
