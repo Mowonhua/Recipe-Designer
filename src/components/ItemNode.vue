@@ -23,35 +23,31 @@
       <span class="node-name">{{ data.name }}</span>
     </div>
 
-    <!-- Target handles — always rendered for Vue Flow, shifted into panel on expand -->
-    <Handle
-      v-for="(slot, slotIdx) in data.slots"
-      :key="slot.id"
-      type="target"
-      :position="Position.Bottom"
-      :id="slot.id"
-      class="target-handle"
-      :class="{ expanded: isDragHovered }"
-      :style="handleStyle(slot.id, slotIdx)"
-      :connectable-start="false"
-    />
+    <!-- Collapsed state: invisible handles so Vue Flow knows the node has them -->
+    <template v-if="!isDragHovered && !renameSlotId">
+      <Handle
+        v-for="slot in data.slots"
+        :key="slot.id"
+        type="target"
+        :position="Position.Bottom"
+        :id="slot.id"
+        class="target-handle collapsed-dot"
+        :style="collapsedDotStyle()"
+        :connectable-start="false"
+      />
+      <Handle
+        type="target"
+        :position="Position.Bottom"
+        id="__new_slot__"
+        class="target-handle collapsed-dot"
+        :style="collapsedNewDotStyle"
+        :connectable-start="false"
+      />
+      <div v-if="data.slots.length > 0" class="target-bar"></div>
+    </template>
 
-    <!-- New-slot handle — always in DOM, visibility toggled -->
-    <Handle
-      type="target"
-      :position="Position.Bottom"
-      id="__new_slot__"
-      class="target-handle new-slot-handle"
-      :class="{ expanded: isDragHovered }"
-      :style="newSlotHandleStyle"
-      :connectable-start="false"
-    />
-
-    <!-- Collapsed: unified target bar (visual anchor for nodes with slots) -->
-    <div v-if="!isDragHovered && data.slots.length > 0" class="target-bar"></div>
-
-    <!-- Expanded: slot picker panel (shown during drag or inline rename) -->
-    <div v-if="isDragHovered || renameSlotId" class="slot-panel">
+    <!-- Expanded: slot picker panel with handles embedded in each row -->
+    <div v-else class="slot-panel">
       <div class="panel-header">Drop on a slot</div>
 
       <div
@@ -74,6 +70,14 @@
           <span class="slot-name">{{ slot.name }}</span>
           <span class="slot-time">{{ slot.time }}s</span>
         </template>
+        <Handle
+          v-if="!renameSlotId"
+          type="target"
+          :position="Position.Bottom"
+          :id="slot.id"
+          class="slot-handle"
+          :connectable-start="false"
+        />
       </div>
 
       <div class="panel-divider"></div>
@@ -81,6 +85,13 @@
       <div class="slot-row new-slot-row">
         <span class="new-slot-plus">+</span>
         <span class="new-slot-label">New Slot</span>
+        <Handle
+          type="target"
+          :position="Position.Bottom"
+          id="__new_slot__"
+          class="slot-handle new-slot-handle"
+          :connectable-start="false"
+        />
       </div>
     </div>
   </div>
@@ -121,45 +132,19 @@ function onMouseLeave() {
 }
 
 watch(isConnecting, (v) => {
-  if (!v) isDragHovered.value = false;
-});
-
-function slotLeft(slotId: string): string {
-  const slots = props.data.slots;
-  if (slots.length <= 1) return '50%';
-  const idx = slots.findIndex(s => s.id === slotId);
-  const margin = 15;
-  const range = 100 - margin * 2;
-  const step = range / (slots.length - 1);
-  return `${margin + idx * step}%`;
-}
-
-// Handle positioning into panel rows when expanded
-const ROW_H = 28;
-const HEADER_H = 22;
-const PAD = 6;
-
-function handleStyle(slotId: string, slotIdx: number): Record<string, string> {
-  const left = slotLeft(slotId);
-  if (!isDragHovered.value) {
-    return { left, bottom: '-4px', opacity: '0', pointerEvents: 'none' };
+  if (!v && !renameSlotId.value) {
+    isDragHovered.value = false;
   }
-  const offset = HEADER_H + PAD + slotIdx * ROW_H + ROW_H / 2;
-  return { left, bottom: `-${offset}px`, opacity: '1', pointerEvents: 'auto' };
-}
-
-const newSlotHandleStyle = computed(() => {
-  const n = props.data.slots.length;
-  const offset = HEADER_H + PAD + n * ROW_H + 4 + ROW_H / 2;
-  return {
-    left: '50%',
-    bottom: `-${offset}px`,
-    opacity: isDragHovered.value ? '1' : '0',
-    pointerEvents: isDragHovered.value ? 'auto' : 'none',
-  };
 });
 
-// Detect new slots created via the \"+ New Slot\" handle (named '__new__') and enter rename mode
+// Collapsed dot positioning — display all target endpoints at Center (50%)
+function collapsedDotStyle(): Record<string, string> {
+  return { left: '50%' };
+}
+
+const collapsedNewDotStyle = computed(() => ({ left: '50%' }));
+
+// Detect new slots created via the "+ New Slot" handle (named '__new__') and enter rename mode
 watch(() => props.data.slots.map(s => s.name), (names) => {
   const idx = names.indexOf('__new__');
   if (idx !== -1 && renameSlotId.value !== props.data.slots[idx]?.id) {
@@ -185,11 +170,13 @@ function confirmRename() {
   }
   renameSlotId.value = null;
   renameValue.value = '';
+  isDragHovered.value = false;
 }
 
 function cancelRename() {
   renameSlotId.value = null;
   renameValue.value = '';
+  isDragHovered.value = false;
   store.undo();
   store.undo();
 }
@@ -285,10 +272,19 @@ function cancelRename() {
   border-color: color-mix(in srgb, var(--node-color) 45%, #444);
 }
 
+/* Collapsed invisible dots — just to register handles with Vue Flow */
+.collapsed-dot {
+  position: absolute;
+  bottom: -4px;
+  width: 8px;
+  height: 8px;
+  opacity: 0;
+  pointer-events: none;
+}
+
 /* Handles */
 :deep(.vue-flow__handle) {
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  pointer-events: auto;
 }
 
 /* Source handle */
@@ -306,31 +302,30 @@ function cancelRename() {
   box-shadow: 0 0 6px var(--node-color);
 }
 
-/* Target handles */
-:deep(.vue-flow__handle.target-handle) {
-  width: 24px;
-  height: 8px;
-  background-color: #0b0c10;
-  border: 1px solid color-mix(in srgb, var(--node-color) 40%, #333a45);
-  border-radius: var(--radius-sm);
-  bottom: -4px;
-  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.8);
+/* Slot handle — embedded inside each panel row, covers it exactly */
+:deep(.vue-flow__handle.slot-handle) {
+  position: absolute;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  transform: none !important;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  border-radius: var(--radius-md);
+  z-index: 1;
 }
-:deep(.vue-flow__handle.target-handle:hover),
-:deep(.vue-flow__handle.target-handle.connecting) {
-  background-color: color-mix(in srgb, var(--node-color) 15%, #1e2128);
-  border-color: var(--node-color);
-  box-shadow: 0 0 8px color-mix(in srgb, var(--node-color) 50%, transparent);
+:deep(.vue-flow__handle.slot-handle:hover),
+:deep(.vue-flow__handle.slot-handle.connecting) {
+  background: color-mix(in srgb, var(--node-color) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--node-color) 25%, transparent);
 }
 
-/* New-slot handle styling */
-:deep(.vue-flow__handle.new-slot-handle) {
-  border-color: color-mix(in srgb, var(--accent-green) 40%, #333a45);
-}
-:deep(.vue-flow__handle.new-slot-handle:hover),
-:deep(.vue-flow__handle.new-slot-handle.connecting) {
-  border-color: var(--accent-green, #10b981);
-  box-shadow: 0 0 8px color-mix(in srgb, var(--accent-green) 50%, transparent);
+/* New-slot handle embedded in panel */
+:deep(.vue-flow__handle.slot-handle.new-slot-handle:hover),
+:deep(.vue-flow__handle.slot-handle.new-slot-handle.connecting) {
+  background: color-mix(in srgb, var(--accent-green) 10%, transparent);
+  border-color: color-mix(in srgb, var(--accent-green) 35%, transparent);
 }
 
 /* Slot panel */

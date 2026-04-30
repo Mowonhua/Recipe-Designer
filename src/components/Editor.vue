@@ -470,7 +470,11 @@ const showSearch = ref(false);
 
 // --- Popover state ---
 const popoverVisible = ref(false);
-const popoverNode = ref<any>(null);
+const popoverNodeId = ref<string | null>(null);
+const popoverNode = computed(() => {
+  if (!popoverNodeId.value) return null;
+  return store.nodes.find(n => n.id === popoverNodeId.value) || null;
+});
 const canvasWrapRef = ref<HTMLDivElement | null>(null);
 
 const popoverPosition = computed(() => {
@@ -492,13 +496,13 @@ const popoverPosition = computed(() => {
 function onNodeClick(event: any) {
   const nodeData = event.node.data;
   if (!nodeData || !nodeData.id) return;
-  popoverNode.value = nodeData;
+  popoverNodeId.value = nodeData.id;
   popoverVisible.value = true;
 }
 
 function closePopover() {
   popoverVisible.value = false;
-  popoverNode.value = null;
+  popoverNodeId.value = null;
 }
 
 function onPopoverSwitchSlot(slotId: string) {

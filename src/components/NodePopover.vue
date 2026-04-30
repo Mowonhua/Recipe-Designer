@@ -17,7 +17,7 @@
           <div class="header-left">
             <span class="node-icon">
               <img v-if="iconIsImage" :src="node.icon" class="icon-img" />
-              <span v-else>{{ node.icon || '📦' }}</span>
+              <span v-else>{{ node.icon || '' }}</span>
             </span>
             <div>
               <div class="node-name">{{ node.name }}</div>
