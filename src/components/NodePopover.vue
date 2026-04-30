@@ -177,8 +177,8 @@ const activeByproducts = computed(() => {
 .node-icon {
   width: 32px; height: 32px;
   display: flex; align-items: center; justify-content: center;
-  background: rgba(255,255,255,0.04);
-  border-radius: 8px;
+  background: var(--bg-hover);
+  border-radius: var(--radius-sm);
   font-size: 16px;
   overflow: hidden;
   flex-shrink: 0;
@@ -187,7 +187,7 @@ const activeByproducts = computed(() => {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
 }
 .node-name {
   font-size: 13px; font-weight: 600; color: var(--text-primary);
@@ -198,12 +198,13 @@ const activeByproducts = computed(() => {
 }
 .details-btn {
   font-size: 10px; color: var(--accent-link);
-  background: var(--bg-toolbar-btn); border: 1px solid var(--bg-toolbar-btn);
-  border-radius: 5px; padding: 4px 8px;
+  background: var(--bg-toolbar-btn); border: var(--border-width-sm) solid var(--panel-border);
+  border-radius: var(--radius-sm); padding: 4px 8px;
   cursor: pointer; white-space: nowrap;
   font-family: var(--font-ui), sans-serif;
+  transition: background var(--transition-fast), color var(--transition-fast);
 }
-.details-btn:hover { background: var(--bg-toolbar-btn-hover); }
+.details-btn:hover { background: var(--bg-toolbar-btn-hover); color: var(--text-primary); }
 
 .section-label {
   font-size: 9px; color: var(--text-muted);
@@ -216,17 +217,20 @@ const activeByproducts = computed(() => {
 
 .slot-row {
   padding: 8px 10px;
-  background: transparent;
-  border: 1px solid transparent;
-  border-radius: 7px;
+  background: var(--bg-deep);
+  border: var(--border-width-sm) solid var(--panel-border);
+  border-radius: var(--radius-sm);
   display: flex; justify-content: space-between; align-items: center;
   cursor: pointer;
-  transition: all 0.15s;
+  transition: all var(--transition-fast);
 }
-.slot-row:hover { background: rgba(255,255,255,0.03); }
+.slot-row:hover { background: var(--bg-hover); border-color: var(--text-muted); }
 .slot-row.active {
-  background: rgba(240,136,62,0.08);
-  border-color: var(--accent-orange);
+  background: var(--bg-input);
+  border-color: var(--accent-blue);
+}
+.slot-row.active .active-dot {
+  background: var(--accent-blue);
 }
 .slot-name { font-size: 11px; color: var(--text-primary); font-weight: 500; }
 .slot-meta {
@@ -236,7 +240,7 @@ const activeByproducts = computed(() => {
 }
 .active-dot {
   width: 6px; height: 6px; border-radius: var(--radius-full);
-  background: var(--accent-orange); flex-shrink: 0;
+  background: var(--text-muted); flex-shrink: 0;
 }
 
 .io-list { display: flex; flex-direction: column; gap: 3px; max-height: 120px; overflow-y: auto; }

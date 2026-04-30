@@ -186,67 +186,75 @@ function cancelRename() {
 .item-node {
   width: var(--node-width);
   min-height: var(--node-min-height);
-  background: linear-gradient(135deg, color-mix(in srgb, var(--node-color) 8%, #1f222d), color-mix(in srgb, var(--node-color) 2%, #15171d));
-  border: 1px solid color-mix(in srgb, var(--node-color) 20%, #2a2d36);
-  border-top: 1px solid color-mix(in srgb, var(--node-color) 50%, #444);
-  border-radius: var(--radius-xl);
-  padding: 10px 14px;
+  background: var(--bg-surface);
+  border: var(--border-width-md) solid var(--border-default);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-sm) var(--spacing-md);
   display: flex;
   align-items: center;
   justify-content: center;
   position: relative;
   cursor: pointer;
-  box-shadow: inset 0 1px 1px rgb(255 255 255 / 0.05), var(--shadow-node);
-  transition: all var(--transition-slow) var(--ease-bounce);
+  box-shadow: var(--shadow-node);
+  transition: all var(--transition-fast) var(--ease-smooth);
+}
+
+.item-node::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 10px;
+  height: 100%;
+  background-color: var(--node-color);
+  mask-image: linear-gradient(to right, black, transparent);
+  -webkit-mask-image: linear-gradient(to right, black, transparent);
 }
 
 .item-node:hover {
-  border-color: color-mix(in srgb, var(--node-color) 60%, #444);
-  box-shadow: inset 0 1px 1px rgb(255 255 255 / 0.08), var(--shadow-node-hover);
-  transform: translateY(-2px);
+  transform: translate(-4px, -4px);
+  box-shadow: var(--shadow-node-hover);
 }
 
 .item-node.selected {
-  background: linear-gradient(135deg, color-mix(in srgb, var(--node-color) 12%, #222631), color-mix(in srgb, var(--node-color) 5%, #181a21));
   border-color: var(--node-color);
-  box-shadow: inset 0 1px 1px rgb(255 255 255 / 0.1),
-              0 0 0 2px color-mix(in srgb, var(--node-color) 25%, transparent),
-              0 8px 20px color-mix(in srgb, var(--node-color) 20%, transparent);
+  background: var(--bg-hover);
 }
 
 .item-node.drag-target {
-  border-color: color-mix(in srgb, var(--node-color) 70%, #444);
-  box-shadow: inset 0 1px 1px rgb(255 255 255 / 0.08),
-              0 0 0 3px color-mix(in srgb, var(--node-color) 20%, transparent),
-              0 8px 28px color-mix(in srgb, var(--node-color) 18%, transparent);
+  border-color: var(--node-color);
+  transform: scale(1.05);
 }
 
 .item-node.orphan {
-  border-style: dashed;
-  opacity: 0.5;
+  border-style: dotted;
+  opacity: 0.6;
 }
 
 /* Node label */
 .node-label {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--spacing-sm);
   font-family: var(--font-ui), sans-serif;
-  font-size: 13.5px;
-  font-weight: 500;
-  color: #f8fafc;
-  letter-spacing: 0.2px;
-  text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+  font-size: 14px;
+  font-weight: bold;
+  color: var(--text-primary);
+  text-transform: uppercase;
+  letter-spacing: 1px;
 }
 .node-icon-img {
-  width: 18px; height: 18px;
-  border-radius: 3px;
+  width: 24px; height: 24px;
+  border-radius: var(--radius-sm);
   object-fit: cover;
   flex-shrink: 0;
-  opacity: 0.9;
+  filter: grayscale(100%) contrast(1.2);
+}
+.item-node:hover .node-icon-img {
+  filter: none;
 }
 .node-icon-text {
-  font-size: 15px;
+  font-size: 16px;
   line-height: 1;
   flex-shrink: 0;
 }
@@ -259,20 +267,16 @@ function cancelRename() {
 /* Collapsed target bar */
 .target-bar {
   position: absolute;
-  bottom: -3px;
-  left: 25%;
-  right: 25%;
-  height: 6px;
-  background: #0b0c10;
-  border: 1px solid color-mix(in srgb, var(--node-color) 25%, #333a45);
-  border-radius: 3px;
-  transition: all var(--transition-normal);
-}
-.item-node:hover .target-bar {
-  border-color: color-mix(in srgb, var(--node-color) 45%, #444);
+  bottom: -4px;
+  left: 20%;
+  right: 20%;
+  height: 8px;
+  background: var(--node-color);
+  border: var(--border-width-sm) solid var(--border-default);
+  transition: all var(--transition-fast);
 }
 
-/* Collapsed invisible dots — just to register handles with Vue Flow */
+/* Collapsed invisible dots */
 .collapsed-dot {
   position: absolute;
   bottom: -4px;
@@ -284,25 +288,24 @@ function cancelRename() {
 
 /* Handles */
 :deep(.vue-flow__handle) {
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all var(--transition-fast) var(--ease-smooth);
 }
 
 /* Source handle */
 :deep(.vue-flow__handle.source-handle) {
-  width: 10px;
-  height: 10px;
-  background-color: var(--node-color, #94a3b8);
-  border: 2px solid var(--bg-grid);
-  top: -5px;
-  border-radius: var(--radius-full);
+  width: 16px;
+  height: 16px;
+  background-color: var(--node-color);
+  border: var(--border-width-md) solid var(--border-default);
+  top: -8px;
+  border-radius: var(--radius-sm); /* Using square handles for Bauhaus setup */
   z-index: 3;
 }
 :deep(.vue-flow__handle.source-handle:hover) {
-  transform: scale(1.3);
-  box-shadow: 0 0 6px var(--node-color);
+  transform: rotate(45deg) scale(1.2);
 }
 
-/* Slot handle — embedded inside each panel row, covers it exactly */
+/* Slot handle */
 :deep(.vue-flow__handle.slot-handle) {
   position: absolute;
   inset: 0 !important;
@@ -312,114 +315,103 @@ function cancelRename() {
   background: transparent;
   border: none;
   box-shadow: none;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-sm);
   z-index: 1;
 }
 :deep(.vue-flow__handle.slot-handle:hover),
 :deep(.vue-flow__handle.slot-handle.connecting) {
-  background: color-mix(in srgb, var(--node-color) 8%, transparent);
-  border: 1px solid color-mix(in srgb, var(--node-color) 25%, transparent);
-}
-
-/* New-slot handle embedded in panel */
-:deep(.vue-flow__handle.slot-handle.new-slot-handle:hover),
-:deep(.vue-flow__handle.slot-handle.new-slot-handle.connecting) {
-  background: color-mix(in srgb, var(--accent-green) 10%, transparent);
-  border-color: color-mix(in srgb, var(--accent-green) 35%, transparent);
+  background: var(--node-color);
+  opacity: 0.1;
 }
 
 /* Slot panel */
 .slot-panel {
   position: absolute;
-  top: calc(100% + 4px);
-  left: -8px;
-  right: -8px;
-  background: var(--bg-surface);
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius-lg);
-  padding: 6px 0;
+  top: calc(100% + var(--border-width-md));
+  left: -2px;
+  right: -2px;
+  background: var(--panel-bg);
+  border: var(--border-width-md) solid var(--border-default);
+  border-radius: var(--radius-sm);
+  padding: var(--spacing-sm) 0;
   z-index: 10;
-  box-shadow: var(--shadow-card);
-  animation: panelIn 0.15s var(--ease-smooth);
-}
-@keyframes panelIn {
-  from { opacity: 0; transform: translateY(-4px); }
-  to { opacity: 1; transform: translateY(0); }
+  box-shadow: var(--shadow-menu);
 }
 
 .panel-header {
-  padding: 4px 10px 6px;
-  font-size: 9px;
-  color: var(--text-muted);
+  padding: var(--spacing-xs) var(--spacing-md);
+  font-size: 10px;
+  color: var(--text-dimmed);
   text-transform: uppercase;
-  letter-spacing: 0.5px;
-  font-weight: 600;
+  letter-spacing: 1px;
+  font-weight: bold;
 }
 
 .slot-row {
   position: relative;
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 10px;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-xs) var(--spacing-md);
   cursor: pointer;
-  border-left: 2px solid transparent;
-  transition: background var(--transition-fast), border-color var(--transition-fast);
-  min-height: 28px;
+  border-left: var(--border-width-lg) solid transparent;
+  transition: all var(--transition-fast);
+  min-height: 32px;
 }
 .slot-row:hover {
   background: var(--bg-hover);
   border-left-color: var(--node-color);
 }
 .slot-row.renaming {
-  background: color-mix(in srgb, var(--accent-blue) 8%, transparent);
+  background: var(--bg-input);
   border-left-color: var(--accent-blue);
 }
 .slot-name {
   flex: 1;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text-primary);
-  font-weight: 500;
+  font-weight: bold;
 }
 .slot-time {
-  font-size: 9px;
+  font-size: 10px;
   color: var(--text-muted);
-  font-family: var(--font-mono), monospace;
+  font-family: var(--font-mono);
 }
 
 .panel-divider {
-  height: 1px;
+  height: var(--border-width-sm);
   background: var(--border-subtle);
-  margin: 3px 8px;
+  margin: var(--spacing-xs) var(--spacing-sm);
 }
 
 .new-slot-row {
   border-left-color: transparent;
 }
 .new-slot-row:hover {
-  background: color-mix(in srgb, var(--accent-green) 6%, transparent);
+  background: var(--bg-hover);
   border-left-color: var(--accent-green);
 }
 .new-slot-plus {
-  font-size: 14px;
-  line-height: 1;
+  font-size: 16px;
+  font-weight: bold;
   color: var(--accent-green);
   flex-shrink: 0;
 }
 .new-slot-label {
-  font-size: 11px;
+  font-size: 12px;
+  font-weight: bold;
   color: var(--accent-green);
 }
 
 .rename-input {
   flex: 1;
   background: var(--bg-input);
-  border: 1px solid var(--accent-blue);
+  border: var(--border-width-sm) solid var(--accent-blue);
   border-radius: var(--radius-sm);
-  padding: 2px 6px;
-  font-size: 11px;
+  padding: 4px 8px;
+  font-size: 12px;
   color: var(--text-primary);
-  font-family: var(--font-ui), sans-serif;
+  font-family: var(--font-ui);
   outline: none;
 }
 </style>

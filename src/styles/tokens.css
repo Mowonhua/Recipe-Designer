@@ -5,60 +5,62 @@
    ============================================ */
 
 :root {
-  /* ---- Backgrounds ---- */
-  --bg-color: #0f1115;
-  --bg-grid: #1a1d24;
-  --panel-bg: #1c1e26;          /* kept for backward compat — panels, drawers */
-  --bg-surface: #161b22;        /* cards, popovers, toolbar, collapsed groups */
-  --bg-deep: #0d1117;           /* slot cards, summary columns */
-  --bg-input: #121316;          /* form inputs */
-  --bg-header: #22242e;         /* panel headers */
-  --bg-context: #252830;        /* context menus */
-  --bg-hover: #2a2d35;          /* hover / highlight */
-  --bg-toolbar-btn: #1f2937;    /* details button, etc. */
-  --bg-toolbar-btn-hover: #2d3748;
+  /* ============================================
+     Light Theme (Bauhaus / Suprematism inspired)
+     ============================================ */
+  --bg-color: #f7f7f7;
+  --bg-grid: #e5e5e5;
+  --panel-bg: #ffffff;
+  --bg-surface: #f0f0f0;
+  --bg-deep: #e8e8e8;
+  --bg-input: #ffffff;
+  --bg-header: #f2f2f2;
+  --bg-context: #ffffff;
+  --bg-hover: #e0e0e0;
+  --bg-toolbar-btn: #f0f0f0;
+  --bg-toolbar-btn-hover: #e0e0e0;
 
   /* ---- Borders ---- */
-  --border-default: #30363d;    /* card/popover/input borders */
-  --panel-border: #2a2d35;      /* kept for backward compat — panel / section borders */
-  --border-subtle: #21262d;     /* subtle separators, slot cards */
+  --border-default: #111111;
+  --panel-border: #111111;
+  --border-subtle: #cccccc;
 
   /* ---- Text ---- */
-  --text-primary: #e6edf3;      /* headings, prominent text */
-  --text-main: #e2e8f0;         /* body text */
-  --text-muted: #8b949e;        /* labels, meta, muted content */
-  --text-dimmed: #64748b;       /* dimmer variant (subtitles, placeholders) */
-  --text-disabled: #484f5a;     /* empty states, hints, italic notes */
+  --text-primary: #111111;
+  --text-main: #222222;
+  --text-muted: #555555;
+  --text-dimmed: #777777;
+  --text-disabled: #999999;
 
-  /* ---- Accent ---- */
-  --accent-blue: #3b82f6;       /* primary actions, focus rings, active tabs */
-  --accent-link: #58a6ff;       /* links, byproduct text, tag pills, group borders */
-  --accent-orange: #f0883e;     /* active slot border, active dot */
-  --accent-amber: #f59e0b;      /* warm accent (reserved) */
-  --accent-green: #10b981;      /* badges */
-  --accent-green-bright: #3fb950; /* active status */
-  --accent-red: #ef4444;        /* danger / delete */
+  /* ---- Accent (Primary colors typical of Bauhaus) ---- */
+  --accent-blue: #0050A0;
+  --accent-link: #0050A0;
+  --accent-orange: #E33939; /* Red-orange */
+  --accent-amber: #FFD400;  /* Yellow */
+  --accent-green: #008855;
+  --accent-green-bright: #00AA66;
+  --accent-red: #E33939;
 
-  /* ---- Border Radii ---- */
-  --radius-sm: 4px;
-  --radius-md: 6px;
-  --radius-lg: 8px;
-  --radius-xl: 10px;
-  --radius-2xl: 12px;
+  /* ---- Border Radii (Minimalist, sharp edges) ---- */
+  --radius-sm: 0px;
+  --radius-md: 0px;
+  --radius-lg: 0px;
+  --radius-xl: 0px;
+  --radius-2xl: 0px;
   --radius-full: 50%;
 
-  /* ---- Shadows ---- */
-  --shadow-card: 0 12px 32px rgba(0, 0, 0, 0.5);
-  --shadow-modal: 0 20px 60px rgba(0, 0, 0, 0.5);
-  --shadow-menu: 0 8px 24px rgba(0, 0, 0, 0.4);
-  --shadow-node: 0 4px 6px -1px rgb(0 0 0 / 0.4), 0 2px 4px -2px rgb(0 0 0 / 0.4);
-  --shadow-node-hover: 0 10px 15px -3px rgb(0 0 0 / 0.4), 0 4px 6px -4px rgb(0 0 0 / 0.4);
-  --shadow-group: 0 4px 16px rgba(0, 0, 0, 0.3);
+  /* ---- Shadows (Harsh geometric shadows) ---- */
+  --shadow-card: 4px 4px 0px rgba(17, 17, 17, 1);
+  --shadow-modal: 8px 8px 0px rgba(17, 17, 17, 1);
+  --shadow-menu: 4px 4px 0px rgba(17, 17, 17, 1);
+  --shadow-node: 2px 2px 0px rgba(17, 17, 17, 1);
+  --shadow-node-hover: 4px 4px 0px rgba(17, 17, 17, 1);
+  --shadow-group: 4px 4px 0px rgba(17, 17, 17, 1);
 
   /* ---- Transitions ---- */
-  --transition-fast: 0.1s;
-  --transition-normal: 0.15s;
-  --transition-slow: 0.25s;
+  --transition-fast: 0.15s;
+  --transition-normal: 0.25s;
+  --transition-slow: 0.4s;
   --ease-bounce: cubic-bezier(0.175, 0.885, 0.32, 1.275);
   --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
 
@@ -69,4 +71,70 @@
   /* ---- Layout ---- */
   --node-width: 160px;
   --node-min-height: 48px;
+  
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+
+  --border-width-sm: 1px;
+  --border-width-md: 2px;
+  --border-width-lg: 4px;
+
+  --color-transparent: transparent;
+}
+
+[data-theme='dark'] {
+  /* ============================================
+     Dark Theme
+     ============================================ */
+  --bg-color: #0f1115;
+  --bg-grid: #1a1d24;
+  --panel-bg: #1c1e26;
+  --bg-surface: #161b22;
+  --bg-deep: #0d1117;
+  --bg-input: #121316;
+  --bg-header: #22242e;
+  --bg-context: #252830;
+  --bg-hover: #2a2d35;
+  --bg-toolbar-btn: #1f2937;
+  --bg-toolbar-btn-hover: #2d3748;
+
+  --border-default: #30363d;
+  --panel-border: #2a2d35;
+  --border-subtle: #21262d;
+
+  --text-primary: #e6edf3;
+  --text-main: #e2e8f0;
+  --text-muted: #8b949e;
+  --text-dimmed: #64748b;
+  --text-disabled: #484f5a;
+
+  --accent-blue: #3b82f6;
+  --accent-link: #58a6ff;
+  --accent-orange: #f0883e;
+  --accent-amber: #f59e0b;
+  --accent-green: #10b981;
+  --accent-green-bright: #3fb950;
+  --accent-red: #ef4444;
+
+  --shadow-card: 4px 4px 0px rgba(0, 0, 0, 1);
+  --shadow-modal: 8px 8px 0px rgba(0, 0, 0, 1);
+  --shadow-menu: 4px 4px 0px rgba(0, 0, 0, 1);
+  --shadow-node: 2px 2px 0px rgba(0, 0, 0, 1);
+  --shadow-node-hover: 4px 4px 0px rgba(0, 0, 0, 1);
+  --shadow-group: 4px 4px 0px rgba(0, 0, 0, 1);
+
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+
+  --border-width-sm: 1px;
+  --border-width-md: 2px;
+  --border-width-lg: 4px;
+
+  --color-transparent: transparent;
 }

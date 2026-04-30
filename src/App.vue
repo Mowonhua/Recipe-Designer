@@ -1,18 +1,41 @@
 ﻿<template>
-  <n-config-provider :theme="darkTheme">
-    <n-message-provider>
-      <n-notification-provider>
-        <n-dialog-provider>
-          <Editor />
-        </n-dialog-provider>
-      </n-notification-provider>
-    </n-message-provider>
+  <n-config-provider :theme="isDarkTheme ? darkTheme : null">
+    <div :class="['theme-wrapper', isDarkTheme ? 'dark' : 'light']" :data-theme="isDarkTheme ? 'dark' : 'light'">
+      <div class="theme-toggle" @click="toggleTheme">
+        {{ isDarkTheme ? 'Dark Mode' : 'Light Mode' }}
+      </div>
+      <n-message-provider>
+        <n-notification-provider>
+          <n-dialog-provider>
+            <Editor />
+          </n-dialog-provider>
+        </n-notification-provider>
+      </n-message-provider>
+    </div>
   </n-config-provider>
 </template>
 
 <script setup lang="ts">
+import { ref, watchEffect, provide } from 'vue';
 import { NMessageProvider, NNotificationProvider, NDialogProvider, NConfigProvider, darkTheme } from 'naive-ui';
 import Editor from './components/Editor.vue';
+
+const isDarkTheme = ref(true);
+
+const toggleTheme = () => {
+  isDarkTheme.value = !isDarkTheme.value;
+};
+
+provide('isDarkTheme', isDarkTheme);
+provide('toggleTheme', toggleTheme);
+
+watchEffect(() => {
+  if (isDarkTheme.value) {
+    document.documentElement.setAttribute('data-theme', 'dark');
+  } else {
+    document.documentElement.removeAttribute('data-theme');
+  }
+});
 </script>
 
 <style>
@@ -27,6 +50,36 @@ html, body, #app {
   font-family: var(--font-ui);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  transition: background-color var(--transition-normal), color var(--transition-normal);
+}
+
+.theme-wrapper {
+  width: 100%;
+  height: 100%;
+}
+
+.theme-toggle {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  z-index: 10000;
+  padding: 8px 16px;
+  background-color: var(--text-primary);
+  color: var(--bg-color);
+  font-family: var(--font-mono);
+  font-weight: bold;
+  text-transform: uppercase;
+  cursor: pointer;
+  border: 2px solid var(--text-primary);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), background-color var(--transition-fast), color var(--transition-fast), box-shadow var(--transition-fast);
+}
+body.drawer-open .theme-toggle {
+  transform: translateX(-420px);
+}
+.theme-toggle:hover {
+  background-color: var(--bg-color);
+  color: var(--text-primary);
+  box-shadow: 4px 4px 0px var(--text-primary);
 }
 
 /* Vue Flow overrides */
@@ -43,10 +96,10 @@ html, body, #app {
 
 .vue-flow__minimap {
   background-color: var(--panel-bg);
-  border: 1px solid var(--panel-border);
-  border-radius: var(--radius-lg);
+  border: 2px solid var(--panel-border);
+  border-radius: var(--radius-sm);
   overflow: hidden;
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+  box-shadow: var(--shadow-node);
 }
 .vue-flow__minimap-mask {
   fill: rgba(0, 0, 0, 0.6);
@@ -55,14 +108,14 @@ html, body, #app {
   fill: var(--text-dimmed);
 }
 .vue-flow__controls {
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5);
-  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-node);
+  border-radius: var(--radius-sm);
   overflow: hidden;
-  border: 1px solid var(--panel-border);
+  border: 2px solid var(--panel-border);
 }
 .vue-flow__controls-button {
   background-color: var(--panel-bg);
-  border-bottom: 1px solid var(--panel-border);
+  border-bottom: 2px solid var(--panel-border);
   color: var(--text-main);
   fill: var(--text-main);
 }

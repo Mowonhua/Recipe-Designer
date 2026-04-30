@@ -389,13 +389,14 @@ onUnmounted(() => window.removeEventListener('keydown', onKeyDown));
   width: 100%;
   padding: 6px 8px;
   border-radius: var(--radius-md);
-  border: 1px solid var(--panel-border);
-  background: #1a1b1f;
+  border: var(--border-width-sm) solid var(--panel-border);
+  background: var(--bg-input);
   color: var(--text-main);
   font-size: 12px;
   font-family: var(--font-ui);
   outline: none;
   box-sizing: border-box;
+  transition: background var(--transition-normal), color var(--transition-normal), border-color var(--transition-normal);
 }
 .search-input::placeholder {
   color: var(--text-muted);
@@ -497,25 +498,27 @@ onUnmounted(() => window.removeEventListener('keydown', onKeyDown));
 /* --- Inline Form --- */
 .inline-form {
   padding: 8px;
-  background: #1a1b1f;
+  background: var(--bg-surface);
   border-radius: var(--radius-md);
-  border: 1px solid var(--panel-border);
+  border: var(--border-width-sm) solid var(--panel-border);
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--spacing-xs);
+  transition: background var(--transition-normal), border-color var(--transition-normal);
 }
 
 .form-input {
   width: 100%;
   padding: 6px 8px;
   border-radius: var(--radius-sm);
-  border: 1px solid var(--panel-border);
+  border: var(--border-width-sm) solid var(--panel-border);
   background: var(--bg-input);
   color: var(--text-main);
   font-size: 12px;
   font-family: var(--font-ui);
   outline: none;
   box-sizing: border-box;
+  transition: background var(--transition-normal), color var(--transition-normal), border-color var(--transition-normal);
 }
 .form-input::placeholder {
   color: var(--text-muted);

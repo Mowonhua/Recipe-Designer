@@ -1,7 +1,7 @@
 <template>
   <n-drawer
     :show="visible"
-    :width="340"
+    :width="420"
     placement="right"
     @update:show="onUpdateShow"
   >

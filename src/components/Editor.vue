@@ -86,8 +86,6 @@ import DictionaryPanel from './DictionaryPanel.vue';
 import SearchOverlay from './SearchOverlay.vue';
 
 const store = useStore();
-
-// --- Vue Flow setup ---
 const { setCenter, viewport } = useVueFlow();
 
 const nodeTypes: any = { item: markRaw(ItemNode), group: markRaw(GroupNode) };
@@ -522,6 +520,14 @@ function onPopoverOpenDrawer() {
 // --- Drawer state ---
 const drawerVisible = ref(false);
 const drawerNode = ref<any>(null);
+
+watch(drawerVisible, (val) => {
+  if (val) {
+    document.body.classList.add('drawer-open');
+  } else {
+    document.body.classList.remove('drawer-open');
+  }
+});
 
 function onNodeDoubleClick(event: any) {
   const nodeData = event.node.data;
