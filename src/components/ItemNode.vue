@@ -15,6 +15,7 @@
       :position="Position.Top"
       id="source"
       class="source-handle"
+      :connectable-end="false"
     />
 
     <div class="node-label">

@@ -1,6 +1,6 @@
 <template>
   <div :class="['group-node', { collapsed: data.collapsed }]">
-    <Handle v-if="data.collapsed" type="source" :position="Position.Top" id="source" class="source-handle" />
+    <Handle v-if="data.collapsed" type="source" :position="Position.Top" id="source" class="source-handle" :connectable-end="false" />
     <Handle v-if="data.collapsed" type="target" :position="Position.Bottom" class="target-handle collapsed-dot" :style="{ left: '50%' }" :connectable-start="false"/>
     <!-- Header -->
     <div class="group-header" @dblclick.stop="toggleCollapse">
