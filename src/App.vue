@@ -76,6 +76,12 @@ html, body, #app {
 body.drawer-open .theme-toggle {
   transform: translateX(-420px);
 }
+body.bom-panel-open .theme-toggle {
+  transform: translateX(-480px);
+}
+body.drawer-open.bom-panel-open .theme-toggle {
+  transform: translateX(-480px);
+}
 .theme-toggle:hover {
   background-color: var(--bg-color);
   color: var(--text-primary);

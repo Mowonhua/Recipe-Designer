@@ -9,6 +9,9 @@
         <button type="button" class="toolbar-btn" @click="store.deleteOrphans()" title="Delete all orphan nodes">
           Clean Orphans
         </button>
+        <button type="button" class="toolbar-btn" @click="openBomPanel()" title="BOM Calculator (Ctrl+B)">
+          BOM
+        </button>
       </div>
       <VueFlow
         v-model:nodes="nodes"
@@ -27,12 +30,13 @@
         @node-double-click="onNodeDoubleClick"
         @dragover="onDragOverCanvas"
         @drop="onDropOnCanvas"
-        @pane-click="closePopover"
+        @pane-click="onPaneClick"
         @connect="onConnect"
         @nodes-change="onNodesChange"
         @edges-change="onEdgesChange"
         @connect-start="isConnecting = true"
         @connect-end="isConnecting = false"
+        @node-contextmenu="onNodeContextMenu"
         @edge-double-click="onEdgeDoubleClick"
         @viewport-change="onViewportChange"
       >
@@ -58,6 +62,12 @@
         :visible="drawerVisible"
         :node="drawerNode"
         @update:visible="(v: boolean) => { if (!v) closeDrawer(); }"
+      />
+      <BomPanel />
+      <ContextMenu
+        :visible="ctxMenuVisible"
+        :position="ctxMenuPosition"
+        :items="ctxMenuItems"
       />
     </div>
     <SearchOverlay v-if="showSearch" @close="showSearch = false" />
@@ -87,8 +97,13 @@ import NodeDrawer from './NodeDrawer.vue';
 import GroupNode from './GroupNode.vue';
 import DictionaryPanel from './DictionaryPanel.vue';
 import SearchOverlay from './SearchOverlay.vue';
+import BomPanel from './BomPanel.vue';
+import ContextMenu from './ContextMenu.vue';
+import type { ContextMenuItem } from './ContextMenu.vue';
+import { useBomStore } from '../store/bom-store';
 
 const store = useStore();
+const bomStore = useBomStore();
 const { setCenter, viewport, fitView } = useVueFlow();
 
 const nodeTypes: any = { item: markRaw(ItemNode), group: markRaw(GroupNode) };
@@ -477,6 +492,28 @@ watch(
   { flush: 'sync' },
 );
 
+// BOM hover highlighting on canvas nodes
+watch(
+  () => bomStore.highlightedNodeId,
+  (id) => {
+    for (const node of nodes.value) {
+      if (id && node.id !== id) {
+        node.class = 'bom-dimmed';
+      } else if (id && node.id === id) {
+        node.class = 'bom-highlight';
+      } else {
+        node.class = undefined;
+      }
+    }
+  },
+);
+
+// Close context menu when pane is clicked
+function onPaneClick() {
+  closePopover();
+  closeContextMenu();
+}
+
 // --- Drag tracking ---
 const dragStartPositions = new Map<string, { x: number; y: number }>();
 
@@ -797,6 +834,57 @@ function onPopoverOpenDrawer() {
   }
 }
 
+// --- Context menu state ---
+const ctxMenuVisible = ref(false);
+const ctxMenuPosition = ref({ x: 0, y: 0 });
+const ctxMenuNodeId = ref<string | null>(null);
+const ctxMenuItems = computed<ContextMenuItem[]>(() => {
+  if (!ctxMenuNodeId.value) return [];
+  const node = store.nodes.find(n => n.id === ctxMenuNodeId.value);
+  if (!node) return [];
+  const activeSlotId = node.active_slot_id || node.slots[0]?.id;
+  return [
+    {
+      key: 'bom',
+      label: 'Calculate BOM',
+      shortcut: 'Ctrl+B',
+      disabled: !activeSlotId,
+      action: () => {
+        if (activeSlotId) {
+          openBomPanelForNode(node.id, activeSlotId);
+        }
+        ctxMenuVisible.value = false;
+      },
+    },
+  ];
+});
+
+function onNodeContextMenu(event: any) {
+  event.event.preventDefault();
+  const nodeData = event.node.data;
+  if (!nodeData || !nodeData.id) return;
+  ctxMenuNodeId.value = nodeData.id;
+  ctxMenuPosition.value = { x: event.event.clientX, y: event.event.clientY };
+  ctxMenuVisible.value = true;
+}
+
+function closeContextMenu() {
+  ctxMenuVisible.value = false;
+  ctxMenuNodeId.value = null;
+}
+
+// --- BOM panel ---
+function openBomPanel() {
+  const node = popoverNode.value || drawerNode.value;
+  if (!node) return;
+  const slotId = node.active_slot_id || node.slots[0]?.id;
+  openBomPanelForNode(node.id, slotId);
+}
+
+function openBomPanelForNode(nodeId: string, slotId: string | undefined) {
+  bomStore.calculateFromNode(nodeId, slotId);
+}
+
 // --- Drawer state ---
 const drawerVisible = ref(false);
 const drawerNode = ref<any>(null);
@@ -806,6 +894,14 @@ watch(drawerVisible, (val) => {
     document.body.classList.add('drawer-open');
   } else {
     document.body.classList.remove('drawer-open');
+  }
+});
+
+watch(() => bomStore.panelVisible, (val) => {
+  if (val) {
+    document.body.classList.add('bom-panel-open');
+  } else {
+    document.body.classList.remove('bom-panel-open');
   }
 });
 
@@ -897,11 +993,16 @@ function onKeydown(e: KeyboardEvent) {
   } else if (ctrl && e.key === 'y') {
     e.preventDefault();
     store.redo();
+  } else if (ctrl && e.key === 'b') {
+    e.preventDefault();
+    openBomPanel();
   } else if (ctrl && e.key === 'p') {
     e.preventDefault();
     showSearch.value = !showSearch.value;
   } else if (e.key === 'Escape' && showSearch.value) {
     showSearch.value = false;
+  } else if (e.key === 'Escape') {
+    closeContextMenu();
   }
 }
 
@@ -962,5 +1063,19 @@ onUnmounted(() => {
 .toolbar-btn:active {
   transform: translate(2px, 2px);
   box-shadow: 2px 2px 0px var(--text-primary);
+}
+</style>
+
+<style>
+/* BOM hover highlight/dim — global because Vue Flow nodes are rendered outside scoped context */
+.bom-highlight {
+  filter: brightness(1.3) drop-shadow(0 0 6px var(--accent-amber));
+  z-index: 50 !important;
+  transition: filter 0.15s ease;
+}
+
+.bom-dimmed {
+  opacity: 0.25;
+  transition: opacity 0.2s ease;
 }
 </style>

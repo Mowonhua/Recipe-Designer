@@ -2,6 +2,7 @@ docs/
 icons/
 *.svg
 .*/
+__*__/
 
 # Logs
 logs
