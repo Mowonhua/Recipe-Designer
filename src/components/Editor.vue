@@ -72,6 +72,24 @@
         :position="ctxMenuPosition"
         :items="ctxMenuItems"
       />
+      <div
+        v-if="edgeEditId"
+        class="edge-inline-edit"
+        :style="{ left: edgeEditX + 'px', top: edgeEditY + 'px' }"
+        @wheel.prevent="onEdgeEditWheel"
+      >
+        <button class="edge-edit-btn edge-edit-down" @mousedown.prevent="edgeEditStep(-1)">-</button>
+        <input
+          ref="edgeEditInputRef"
+          v-model.number="edgeEditQty"
+          type="text"
+          inputmode="numeric"
+          @keydown.enter="commitEdgeEdit()"
+          @keydown.escape="cancelEdgeEdit()"
+          @blur="commitEdgeEdit()"
+        />
+        <button class="edge-edit-btn edge-edit-up" @mousedown.prevent="edgeEditStep(1)">+</button>
+      </div>
     </div>
     <SearchOverlay v-if="showSearch" @close="showSearch = false" />
 
@@ -93,7 +111,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, provide, watch, onMounted, onUnmounted, markRaw, computed } from 'vue';
+import { ref, provide, watch, onMounted, onUnmounted, markRaw, computed, nextTick } from 'vue';
 import { VueFlow, useVueFlow } from '@vue-flow/core';
 import { Background } from '@vue-flow/background';
 import { Controls } from '@vue-flow/controls';
@@ -535,6 +553,7 @@ watch(
 function onPaneClick() {
   closePopover();
   closeContextMenu();
+  cancelEdgeEdit();
 }
 
 // --- Drag tracking ---
@@ -778,18 +797,50 @@ function onEdgesChange(changes: EdgeChange[]) {
   if (!removalTimer) removalTimer = setTimeout(flushRemovals, 0);
 }
 
-// --- Edge double-click: edit quantity ---
+// --- Edge inline label editing ---
+const edgeEditId = ref<string | null>(null);
+const edgeEditQty = ref(1);
+const edgeEditX = ref(0);
+const edgeEditY = ref(0);
+const edgeEditInputRef = ref<HTMLInputElement | null>(null);
+
 function onEdgeDoubleClick(event: EdgeMouseEvent) {
   const edgeId = event.edge.id as string;
   const storeEdge = store.edges.find(e => e.id === edgeId);
-  const currentQty = storeEdge?.quantity || 1;
-  const input = prompt(t('editor.edgeQuantity'), String(currentQty));
-  if (input !== null) {
-    const qty = parseInt(input, 10);
-    if (!isNaN(qty) && qty > 0) {
-      store.updateEdge(edgeId, { quantity: qty });
-    }
+  if (!storeEdge) return;
+  edgeEditId.value = edgeId;
+  edgeEditQty.value = storeEdge.quantity;
+  const rect = canvasWrapRef.value?.getBoundingClientRect();
+  const me = event.event as MouseEvent;
+  if (rect && me.clientX !== undefined) {
+    edgeEditX.value = me.clientX - rect.left;
+    edgeEditY.value = me.clientY - rect.top;
   }
+  nextTick(() => {
+    edgeEditInputRef.value?.focus();
+    edgeEditInputRef.value?.select();
+  });
+}
+
+function commitEdgeEdit() {
+  if (!edgeEditId.value) return;
+  const qty = Math.round(edgeEditQty.value);
+  if (qty > 0 && Number.isFinite(qty)) {
+    store.updateEdge(edgeEditId.value, { quantity: qty });
+  }
+  edgeEditId.value = null;
+}
+
+function edgeEditStep(delta: number) {
+  edgeEditQty.value = Math.max(1, edgeEditQty.value + delta);
+}
+
+function onEdgeEditWheel(e: WheelEvent) {
+  edgeEditQty.value = Math.max(1, edgeEditQty.value + (e.deltaY > 0 ? -1 : 1));
+}
+
+function cancelEdgeEdit() {
+  edgeEditId.value = null;
 }
 
 // --- Viewport ---
@@ -962,29 +1013,56 @@ function onDragOverCanvas(event: DragEvent) {
 function onDropOnCanvas(event: DragEvent) {
   const raw = event.dataTransfer?.getData('text/plain');
   if (!raw) return;
+  const canvasEl = document.querySelector('.canvas-wrap');
+  const rect = canvasEl?.getBoundingClientRect();
+  if (!rect) return;
   try {
     const data = JSON.parse(raw);
-    if (data.type !== 'dictionary-item') return;
-    const nodeId = data.nodeId;
-    if (!store.isNodeOnCanvas(nodeId)) {
-      // Place at drop position — approximate flow coords
-      const canvasEl = document.querySelector('.canvas-wrap');
-      const rect = canvasEl?.getBoundingClientRect();
-      if (!rect) return;
-      const x = event.clientX - rect.left - rect.width / 2;
-      const y = event.clientY - rect.top - rect.height / 2;
-      store.placeNodeOnCanvas(nodeId, { x, y });
-      syncFromStore();
-    } else {
-      // Already on canvas — fly to it
-      const node = store.nodes.find(n => n.id === nodeId);
-      if (node) {
-        window.dispatchEvent(new CustomEvent('search-fly-to', {
-          detail: { x: node.position.x, y: node.position.y },
-        }));
+
+    if (data.type === 'dictionary-item') {
+      const nodeId = data.nodeId;
+      if (!store.isNodeOnCanvas(nodeId)) {
+        const vp = viewport.value;
+        const canvasX = event.clientX - rect.left;
+        const canvasY = event.clientY - rect.top;
+        const x = (canvasX - vp.x) / vp.zoom - 80; // center node under cursor (node half-width)
+        const y = (canvasY - vp.y) / vp.zoom - 24; // center node under cursor (node half-height)
+        store.placeNodeOnCanvas(nodeId, { x, y });
+        syncFromStore();
+      } else {
+        const node = store.nodes.find(n => n.id === nodeId);
+        if (node) {
+          window.dispatchEvent(new CustomEvent('search-fly-to', {
+            detail: { x: node.position.x, y: node.position.y },
+          }));
+        }
+      }
+    } else if (data.type === 'dictionary-machine') {
+      const machineId = data.machineId;
+      // Find node under the drop position
+      const targetNode = findNodeAtDrop(event.clientX - rect.left, event.clientY - rect.top);
+      if (targetNode) {
+        store.setNodeMachine(targetNode.id, machineId);
       }
     }
   } catch { /* ignore */ }
+}
+
+function findNodeAtDrop(canvasX: number, canvasY: number): { id: string } | null {
+  const vp = viewport.value;
+  const flowX = (canvasX - vp.x) / vp.zoom;
+  const flowY = (canvasY - vp.y) / vp.zoom;
+  for (const vfNode of nodes.value) {
+    if ((vfNode as any).type !== 'item') continue;
+    const dim = (vfNode as any).dimensions;
+    if (!dim || !dim.width || !dim.height) continue;
+    const nx = (vfNode as any).position.x;
+    const ny = (vfNode as any).position.y;
+    if (flowX >= nx && flowX <= nx + dim.width && flowY >= ny && flowY <= ny + dim.height) {
+      return { id: vfNode.id };
+    }
+  }
+  return null;
 }
 
 // --- Group helpers ---
@@ -1115,6 +1193,74 @@ onUnmounted(() => {
   font-weight: 900;
   text-transform: uppercase;
   color: var(--text-primary);
+}
+
+.edge-inline-edit {
+  position: absolute;
+  z-index: 100;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  border: 2px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  box-shadow: 3px 3px 0px var(--text-primary);
+  background: var(--bg-color);
+}
+.edge-inline-edit:focus-within {
+  border-color: var(--accent-blue);
+}
+.edge-inline-edit input {
+  width: 44px;
+  height: 24px;
+  padding: 0 2px;
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-primary);
+  background: transparent;
+  border: none;
+  text-align: center;
+  outline: none;
+  -moz-appearance: textfield;
+}
+.edge-inline-edit input::-webkit-outer-spin-button,
+.edge-inline-edit input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.edge-edit-btn {
+  width: 18px;
+  height: 24px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--text-muted);
+  background: var(--bg-surface);
+  border: none;
+  border-radius: 0;
+  cursor: pointer;
+  transition: color var(--transition-fast), background var(--transition-fast);
+  outline: none;
+  user-select: none;
+}
+.edge-edit-btn:hover {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}
+.edge-edit-btn:active {
+  color: var(--accent-blue);
+  background: var(--bg-deep);
+}
+.edge-edit-down {
+  border-right: 2px solid var(--border-default);
+}
+.edge-edit-up {
+  border-left: 2px solid var(--border-default);
 }
 </style>
 

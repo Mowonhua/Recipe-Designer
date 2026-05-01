@@ -361,13 +361,21 @@ function deleteSlot(slotId: string) {
 // --- Inputs editing ---
 const edgeQtys = reactive<Record<string, number>>({});
 
-watch(() => store.edges, (edges) => {
-  for (const e of edges) {
-    if (e.target === props.node?.id) {
+function syncEdgeQtys() {
+  Object.keys(edgeQtys).forEach(k => delete edgeQtys[k]);
+  if (!props.node) return;
+  for (const e of store.edges) {
+    if (e.target === props.node.id) {
       edgeQtys[e.id] = e.quantity;
     }
   }
-}, { immediate: true });
+}
+
+watch(() => props.node?.id, () => syncEdgeQtys(), { immediate: true });
+watch(
+  () => store.edges.map(e => `${e.id}:${e.quantity},${e.target}`).join('|'),
+  () => syncEdgeQtys()
+);
 
 function getSlotEdges(slotId: string): FlowEdge[] {
   return store.edges.filter(e => e.target === props.node?.id && e.target_slot_id === slotId && e.edge_type === 'input');
@@ -621,10 +629,8 @@ function flyTo(nodeId: string) {
 }
 
 .slot-status.active {
-  color: var(--text-primary);
-  background: var(--accent-green);
+  color: var(--accent-green-bright);
   padding: 4px 8px;
-  border: var(--border-width-sm) solid var(--border-default);
 }
 
 .input-group, .relation-row {

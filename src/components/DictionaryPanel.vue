@@ -29,20 +29,37 @@
     <section class="list" @click="closeContextMenu" @scroll="closeContextMenu">
       <!-- Items tab -->
       <template v-if="activeTab === 'items'">
-        <div
-          v-for="node in filteredItems"
-          :key="node.id"
-          class="list-item"
-          :style="{ '--dot-color': node.color || 'var(--accent-blue)' }"
-          draggable="true"
-          @dragstart="onDragStartItem($event, node.id)"
-          @dblclick="flyToNode(node.id)"
-          @contextmenu.prevent.stop="openItemContextMenu($event, node)"
-        >
-          <span class="dot" :style="{ background: node.color || 'var(--accent-blue)' }"></span>
-          <span class="item-name">{{ node.name }}</span>
-          <span v-if="store.isNodeOnCanvas(node.id)" class="on-canvas-badge">{{ $t('dict.onCanvas') }}</span>
-        </div>
+        <template v-for="node in filteredItems" :key="node.id">
+          <!-- Inline edit mode -->
+          <div v-if="editingItemId === node.id" class="inline-form">
+            <input
+              v-model="editItemNameValue"
+              type="text"
+              class="form-input edit-item-input"
+              :placeholder="$t('dict.itemNamePlaceholder')"
+              @keydown.enter="saveItemEdit"
+              @keydown.escape="cancelItemEdit"
+            />
+            <div class="form-actions">
+              <button class="form-btn confirm" @click="saveItemEdit" :disabled="!editItemNameValue.trim()">{{ $t('dict.save') }}</button>
+              <button class="form-btn cancel" @click="cancelItemEdit">{{ $t('dict.cancel') }}</button>
+            </div>
+          </div>
+          <!-- Display mode -->
+          <div
+            v-else
+            class="list-item"
+            :style="{ '--dot-color': node.color || 'var(--accent-blue)' }"
+            draggable="true"
+            @dragstart="onDragStartItem($event, node.id)"
+            @dblclick="flyToNode(node.id)"
+            @contextmenu.prevent.stop="openItemContextMenu($event, node)"
+          >
+            <span class="dot" :style="{ background: node.color || 'var(--accent-blue)' }"></span>
+            <span class="item-name">{{ node.name }}</span>
+            <span v-if="store.isNodeOnCanvas(node.id)" class="on-canvas-badge">{{ $t('dict.onCanvas') }}</span>
+          </div>
+        </template>
 
         <!-- Inline new item form -->
         <div v-if="isAddingItem" class="inline-form">
@@ -74,16 +91,50 @@
 
       <!-- Machines tab -->
       <template v-else>
-        <div
-          v-for="machine in filteredMachines"
-          :key="machine.id"
-          class="list-item"
-          @contextmenu.prevent.stop="openMachineContextMenu($event, machine)"
-        >
-          <span class="dot machine-dot"></span>
-          <span class="item-name">{{ machine.name }}</span>
-          <span class="speed-badge">x{{ machine.base_speed }}</span>
-        </div>
+        <template v-for="machine in filteredMachines" :key="machine.id">
+          <!-- Inline edit mode -->
+          <div v-if="editingMachineId === machine.id" class="inline-form">
+            <input
+              v-model="editMachineNameValue"
+              type="text"
+              class="form-input edit-machine-input"
+              :placeholder="$t('dict.machineNamePlaceholder')"
+              @keydown.enter="saveMachineEdit"
+              @keydown.escape="cancelMachineEdit"
+            />
+            <div class="form-row">
+              <label class="speed-label">{{ $t('dict.speed') }}</label>
+              <div class="speed-edit-group" @wheel.prevent="onSpeedWheel">
+                <button class="speed-edit-btn speed-edit-down" @mousedown.prevent="speedStep(-0.25)">-</button>
+                <input
+                  v-model.number="editMachineSpeedValue"
+                  type="text"
+                  inputmode="decimal"
+                  class="speed-edit-input"
+                  @keydown.enter="saveMachineEdit"
+                  @keydown.escape="cancelMachineEdit"
+                />
+                <button class="speed-edit-btn speed-edit-up" @mousedown.prevent="speedStep(0.25)">+</button>
+              </div>
+            </div>
+            <div class="form-actions">
+              <button class="form-btn confirm" @click="saveMachineEdit" :disabled="!editMachineNameValue.trim()">{{ $t('dict.save') }}</button>
+              <button class="form-btn cancel" @click="cancelMachineEdit">{{ $t('dict.cancel') }}</button>
+            </div>
+          </div>
+          <!-- Display mode -->
+          <div
+            v-else
+            class="list-item"
+            draggable="true"
+            @dragstart="onDragStartMachine($event, machine.id)"
+            @contextmenu.prevent.stop="openMachineContextMenu($event, machine)"
+          >
+            <span class="dot machine-dot"></span>
+            <span class="item-name">{{ machine.name }}</span>
+            <span class="speed-badge">x{{ machine.base_speed }}</span>
+          </div>
+        </template>
 
         <!-- Inline new machine form -->
         <div v-if="isAddingMachine" class="inline-form">
@@ -199,13 +250,35 @@ function createItem() {
   isAddingItem.value = false;
 }
 
-function editItemName(nodeId: string) {
+// --- Inline editing state ---
+const editingItemId = ref<string | null>(null);
+const editItemNameValue = ref('');
+
+function startEditItem(nodeId: string) {
   const node = store.nodes.find(n => n.id === nodeId);
   if (!node) return;
-  const newName = prompt(t('dict.editItemName'), node.name);
-  if (newName !== null && newName.trim() !== '' && newName.trim() !== node.name) {
-    store.updateItem(nodeId, { name: newName.trim() });
+  editingItemId.value = nodeId;
+  editItemNameValue.value = node.name;
+  nextTick(() => {
+    const input = document.querySelector('.edit-item-input') as HTMLInputElement;
+    input?.focus();
+    input?.select();
+  });
+}
+
+function saveItemEdit() {
+  const name = editItemNameValue.value.trim();
+  if (name && editingItemId.value) {
+    const node = store.nodes.find(n => n.id === editingItemId.value);
+    if (node && name !== node.name) {
+      store.updateItem(editingItemId.value, { name });
+    }
   }
+  editingItemId.value = null;
+}
+
+function cancelItemEdit() {
+  editingItemId.value = null;
 }
 
 function deleteItem(nodeId: string) {
@@ -238,7 +311,7 @@ function cancelAddMachine() {
 function createMachine() {
   const name = newMachineName.value.trim();
   if (!name) return;
-  const speed = Math.max(0.1, newMachineSpeed.value || 1.0);
+  const speed = Math.max(0.25, newMachineSpeed.value || 1.0);
   store.addMachine({
     id: uuidv4(),
     name,
@@ -251,13 +324,47 @@ function createMachine() {
   isAddingMachine.value = false;
 }
 
-function editMachineName(machineId: string) {
+const editingMachineId = ref<string | null>(null);
+const editMachineNameValue = ref('');
+const editMachineSpeedValue = ref(1);
+
+function startEditMachine(machineId: string) {
   const machine = store.machines.find(m => m.id === machineId);
   if (!machine) return;
-  const newName = prompt(t('dict.editMachineName'), machine.name);
-  if (newName !== null && newName.trim() !== '' && newName.trim() !== machine.name) {
-    store.updateMachine(machineId, { name: newName.trim() });
+  editingMachineId.value = machineId;
+  editMachineNameValue.value = machine.name;
+  editMachineSpeedValue.value = machine.base_speed;
+  nextTick(() => {
+    const input = document.querySelector('.edit-machine-input') as HTMLInputElement;
+    input?.focus();
+    input?.select();
+  });
+}
+
+function saveMachineEdit() {
+  const name = editMachineNameValue.value.trim();
+  if (name && editingMachineId.value) {
+    const machine = store.machines.find(m => m.id === editingMachineId.value);
+    if (machine) {
+      const speed = Math.max(0.25, editMachineSpeedValue.value || 1.0);
+      if (name !== machine.name || speed !== machine.base_speed) {
+        store.updateMachine(editingMachineId.value, { name, base_speed: speed });
+      }
+    }
   }
+  editingMachineId.value = null;
+}
+
+function cancelMachineEdit() {
+  editingMachineId.value = null;
+}
+
+function speedStep(delta: number) {
+  editMachineSpeedValue.value = Math.max(0.25, +(editMachineSpeedValue.value + delta).toFixed(2));
+}
+
+function onSpeedWheel(e: WheelEvent) {
+  editMachineSpeedValue.value = Math.max(0.25, +(editMachineSpeedValue.value + (e.deltaY > 0 ? -0.25 : 0.25)).toFixed(2));
 }
 
 function deleteMachineById(machineId: string) {
@@ -271,6 +378,11 @@ function deleteMachineById(machineId: string) {
 // --- Drag-to-Canvas ---
 function onDragStartItem(event: DragEvent, nodeId: string) {
   event.dataTransfer?.setData('text/plain', JSON.stringify({ type: 'dictionary-item', nodeId }));
+  event.dataTransfer!.effectAllowed = 'copy';
+}
+
+function onDragStartMachine(event: DragEvent, machineId: string) {
+  event.dataTransfer?.setData('text/plain', JSON.stringify({ type: 'dictionary-machine', machineId }));
   event.dataTransfer!.effectAllowed = 'copy';
 }
 
@@ -332,9 +444,9 @@ function contextMenuEdit() {
   const { type, targetId } = contextMenu.value;
   closeContextMenu();
   if (type === 'item') {
-    editItemName(targetId);
+    startEditItem(targetId);
   } else {
-    editMachineName(targetId);
+    startEditMachine(targetId);
   }
 }
 
@@ -641,8 +753,69 @@ onUnmounted(() => window.removeEventListener('keydown', onKeyDown));
   color: var(--text-primary);
 }
 
-.speed-input {
-  width: 70px;
+.speed-edit-group {
+  display: flex;
+  align-items: center;
+  border: 2px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  box-shadow: 2px 2px 0px var(--text-primary);
+  background: var(--bg-color);
+}
+.speed-edit-group:focus-within {
+  border-color: var(--accent-blue);
+}
+.speed-edit-input {
+  width: 48px;
+  height: 24px;
+  padding: 0 2px;
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-primary);
+  background: transparent;
+  border: none;
+  text-align: center;
+  outline: none;
+  -moz-appearance: textfield;
+}
+.speed-edit-input::-webkit-outer-spin-button,
+.speed-edit-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.speed-edit-btn {
+  width: 18px;
+  height: 24px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--text-muted);
+  background: var(--bg-surface);
+  border: none;
+  border-radius: 0;
+  cursor: pointer;
+  transition: color var(--transition-fast), background var(--transition-fast);
+  outline: none;
+  user-select: none;
+}
+.speed-edit-btn:hover {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}
+.speed-edit-btn:active {
+  color: var(--accent-blue);
+  background: var(--bg-deep);
+}
+.speed-edit-down {
+  border-right: 2px solid var(--border-default);
+}
+.speed-edit-up {
+  border-left: 2px solid var(--border-default);
 }
 
 .form-actions {

@@ -329,12 +329,6 @@ function collectSummary(node: BomTreeNode, request: BomRequest, map: Map<string,
       }
     }
 
-    // Collect byproducts from child
-    if (edge.child) {
-      for (const bp of edge.child.byproducts) {
-        addByproductToSummary(bp, request, map);
-      }
-    }
   }
 
   // Collect byproducts from this node
@@ -346,8 +340,8 @@ function collectSummary(node: BomTreeNode, request: BomRequest, map: Map<string,
 function addNodeToSummary(node: BomTreeNode, request: BomRequest, map: Map<string, BomSummaryRow>): void {
   const existing = map.get(node.nodeId);
   if (existing) {
-    if (request.mode === 'one-time' && node.executionCount !== undefined) {
-      // Use the input quantities — node "produces" what its edges consume upstream
+    if (request.mode === 'one-time') {
+      existing.totalQuantity = (existing.totalQuantity || 0) + node.targetQuantity;
     }
     if (request.mode === 'continuous' && node.actualOutputRate !== undefined) {
       existing.totalRate = (existing.totalRate || 0) + node.actualOutputRate;
@@ -361,9 +355,7 @@ function addNodeToSummary(node: BomTreeNode, request: BomRequest, map: Map<strin
       itemId: node.nodeId,
       itemName: node.nodeName,
       itemColor: node.nodeColor,
-      totalQuantity: request.mode === 'one-time' && node.executionCount !== undefined
-        ? node.executionCount * getSlotOutput(node)
-        : undefined,
+      totalQuantity: request.mode === 'one-time' ? node.targetQuantity : undefined,
       totalRate: request.mode === 'continuous' ? node.actualOutputRate : undefined,
       totalMachines: request.mode === 'continuous' ? node.machineCount : undefined,
       isRawMaterial: node.isRawMaterial,
@@ -397,17 +389,6 @@ function addByproductToSummary(bp: BomByproduct, request: BomRequest, map: Map<s
 }
 
 // --- Helpers ---
-
-function getSlotOutput(node: BomTreeNode): number {
-  // From the tree node we can infer primary output quantity:
-  // For the root node, we know targetQuantity and executionCount
-  // totalProduced = executionCount * primary_output_quantity
-  // But we don't store primary_output_quantity... use the targetQuantity approach
-  // Actually we should track this differently. For summary, use targetQuantity for the root
-  // and for intermediate nodes, use edge quantity as the "needed" amount.
-  // Let's use a simpler approach: return the target quantity as the "produced" amount.
-  return node.targetQuantity;
-}
 
 function makeCycleNode(node: ItemNode, slot: RecipeSlot, depth: number): BomTreeNode {
   return {

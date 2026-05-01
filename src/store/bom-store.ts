@@ -101,10 +101,17 @@ export const useBomStore = defineStore('bom', () => {
     highlightedNodeId.value = null;
   }
 
+  // Clear pending request when panel is closed
+  watch(panelVisible, (val) => {
+    if (!val) {
+      pendingRequest.value = null;
+    }
+  });
+
   // Invalidate cache on store changes
   watch(() => store.changeCounter, () => {
     cache.invalidate();
-    if (pendingRequest.value) {
+    if (pendingRequest.value && panelVisible.value) {
       recalculate();
     }
   });

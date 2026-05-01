@@ -19,6 +19,7 @@
     "speed": "Speed",
     "newMachine": "New Machine",
     "edit": "Edit",
+    "save": "Save",
     "delete": "Delete",
     "editItemName": "Edit item name:",
     "deleteItemConfirm": "Delete \"{name}\"? This will also remove its connections.",

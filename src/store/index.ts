@@ -452,6 +452,18 @@ export const useStore = defineStore('recipe-designer', () => {
     }
   }
 
+  function setNodeMachine(nodeId: string, machineId: string) {
+    const node = nodes.value.find(n => n.id === nodeId);
+    if (!node) return;
+    if (node.slots.length === 0) return;
+    const machine = machines.value.find(m => m.id === machineId);
+    if (!machine) return;
+    for (const slot of node.slots) {
+      slot.machine_id = machineId;
+    }
+    changeCounter.value++;
+  }
+
   function addItem(name: string, color?: string, tags?: string[]): ItemNode {
     const node: ItemNode = {
       id: uuidv4(),
@@ -643,6 +655,7 @@ export const useStore = defineStore('recipe-designer', () => {
     addMachine,
     updateMachine,
     deleteMachine,
+    setNodeMachine,
     addItem,
     updateItem,
     placeNodeOnCanvas,
