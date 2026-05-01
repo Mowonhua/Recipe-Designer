@@ -39,7 +39,8 @@
         @edges-change="onEdgesChange"
         @connect-start="isConnecting = true"
         @connect-end="isConnecting = false"
-        @node-contextmenu="onNodeContextMenu"
+        @node-context-menu="onNodeContextMenu"
+        @edge-context-menu="onEdgeContextMenu"
         @edge-double-click="onEdgeDoubleClick"
         @viewport-change="onViewportChange"
       >
@@ -73,22 +74,28 @@
         :items="ctxMenuItems"
       />
       <div
+        v-if="ctxMenuVisible"
+        class="ol-overlay"
+        @click="closeContextMenu"
+      ></div>
+      <div
         v-if="edgeEditId"
-        class="edge-inline-edit"
+        class="ol-inline-edit"
         :style="{ left: edgeEditX + 'px', top: edgeEditY + 'px' }"
         @wheel.prevent="onEdgeEditWheel"
       >
-        <button class="edge-edit-btn edge-edit-down" @mousedown.prevent="edgeEditStep(-1)">-</button>
+        <button class="ol-inline-edit-btn ol-inline-edit-btn-minus" @mousedown.prevent="edgeEditStep(-1)">-</button>
         <input
           ref="edgeEditInputRef"
           v-model.number="edgeEditQty"
+          class="ol-inline-edit-input"
           type="text"
           inputmode="numeric"
           @keydown.enter="commitEdgeEdit()"
           @keydown.escape="cancelEdgeEdit()"
           @blur="commitEdgeEdit()"
         />
-        <button class="edge-edit-btn edge-edit-up" @mousedown.prevent="edgeEditStep(1)">+</button>
+        <button class="ol-inline-edit-btn ol-inline-edit-btn-plus" @mousedown.prevent="edgeEditStep(1)">+</button>
       </div>
     </div>
     <SearchOverlay v-if="showSearch" @close="showSearch = false" />
@@ -359,23 +366,6 @@ function relayout() {
   }, 50);
 }
 
-function buildFlowEdge(se: FlowEdge) {
-  const isByproduct = se.edge_type === 'byproduct';
-  return {
-    id: se.id,
-    source: se.source,
-    target: se.target,
-    sourceHandle: 'source',
-    targetHandle: se.target_slot_id,
-    type: 'simplebezier',
-    animated: true,
-    label: `x${se.quantity}`,
-    style: isByproduct
-      ? { stroke: '#3b82f6', strokeWidth: 1.5, opacity: 0.7 }
-      : { stroke: '#64748b', strokeWidth: 2, opacity: 0.8 },
-  };
-}
-
 function syncFromStore() {
   const storeNodeIds = new Set(store.nodes.map(n => n.id));
 
@@ -425,7 +415,7 @@ function syncFromStore() {
 
     const edgeType = 'simplebezier';
     const edgeStyle = se.edge_type === 'byproduct'
-      ? { stroke: '#3b82f6', strokeWidth: 1.5, opacity: 0.7, strokeDasharray: '5,5' }
+      ? { stroke: 'var(--accent-tan)', strokeWidth: 1.5, opacity: 0.7, strokeDasharray: '5,5' }
       : { stroke: '#64748b', strokeWidth: 2, opacity: 0.8 };
     const animated = true;
 
@@ -752,8 +742,6 @@ function onConnect(connection: Connection) {
     edge_type: 'input',
   };
   store.addEdge(newEdge);
-  // Immediate visual feedback — push to local edges
-  edges.value.push(buildFlowEdge(newEdge));
 }
 
 // --- Batched removal handling ---
@@ -921,40 +909,117 @@ function onPopoverOpenDrawer() {
 // --- Context menu state ---
 const ctxMenuVisible = ref(false);
 const ctxMenuPosition = ref({ x: 0, y: 0 });
+const ctxMenuTargetType = ref<'node' | 'edge' | null>(null);
 const ctxMenuNodeId = ref<string | null>(null);
+const ctxMenuEdgeId = ref<string | null>(null);
+
 const ctxMenuItems = computed<ContextMenuItem[]>(() => {
-  if (!ctxMenuNodeId.value) return [];
-  const node = store.nodes.find(n => n.id === ctxMenuNodeId.value);
-  if (!node) return [];
-  const activeSlotId = node.active_slot_id || node.slots[0]?.id;
-  return [
-    {
-      key: 'bom',
-      label: t('editor.calculateBom'),
-      shortcut: 'Ctrl+B',
-      disabled: !activeSlotId,
-      action: () => {
-        if (activeSlotId) {
-          openBomPanelForNode(node.id, activeSlotId);
-        }
-        ctxMenuVisible.value = false;
+  if (ctxMenuTargetType.value === 'node' && ctxMenuNodeId.value) {
+    const nodeId = ctxMenuNodeId.value;
+    const node = store.nodes.find(n => n.id === nodeId);
+    if (!node) return [];
+    const activeSlotId = node.active_slot_id || node.slots[0]?.id;
+    return [
+      {
+        key: 'bom',
+        label: t('editor.calculateBom'),
+        shortcut: 'Ctrl+B',
+        disabled: !activeSlotId,
+        action: () => {
+          if (activeSlotId) {
+            openBomPanelForNode(node.id, activeSlotId);
+          }
+          closeContextMenu();
+        },
       },
-    },
-  ];
+      {
+        key: 'disconnect-all',
+        label: t('editor.disconnectAllEdges'),
+        action: () => {
+          const edgeIds = store.edges
+            .filter(e => e.source === nodeId || e.target === nodeId)
+            .map(e => e.id);
+          for (const eid of edgeIds) store.deleteEdge(eid);
+          closeContextMenu();
+        },
+      },
+      {
+        key: 'disconnect-outgoing',
+        label: t('editor.disconnectOutgoingEdges'),
+        action: () => {
+          const edgeIds = store.edges
+            .filter(e => e.source === nodeId)
+            .map(e => e.id);
+          for (const eid of edgeIds) store.deleteEdge(eid);
+          closeContextMenu();
+        },
+      },
+      {
+        key: 'disconnect-incoming',
+        label: t('editor.disconnectIncomingEdges'),
+        action: () => {
+          const edgeIds = store.edges
+            .filter(e => e.target === nodeId)
+            .map(e => e.id);
+          for (const eid of edgeIds) store.deleteEdge(eid);
+          closeContextMenu();
+        },
+      },
+      {
+        key: 'delete-node',
+        label: t('editor.deleteNode'),
+        action: () => {
+          store.deleteNodes([nodeId]);
+          closeContextMenu();
+        },
+      },
+    ];
+  }
+
+  if (ctxMenuTargetType.value === 'edge' && ctxMenuEdgeId.value) {
+    return [
+      {
+        key: 'disconnect-edge',
+        label: t('editor.disconnectEdge'),
+        action: () => {
+          store.deleteEdge(ctxMenuEdgeId.value!);
+          closeContextMenu();
+        },
+      },
+    ];
+  }
+
+  return [];
 });
 
 function onNodeContextMenu(event: any) {
   event.event.preventDefault();
   const nodeData = event.node.data;
   if (!nodeData || !nodeData.id) return;
+  ctxMenuTargetType.value = 'node';
   ctxMenuNodeId.value = nodeData.id;
+  ctxMenuEdgeId.value = null;
   ctxMenuPosition.value = { x: event.event.clientX, y: event.event.clientY };
+  ctxMenuVisible.value = true;
+}
+
+function onEdgeContextMenu(event: EdgeMouseEvent) {
+  event.event.preventDefault();
+  const edgeId = event.edge.id as string;
+  if (!edgeId) return;
+  const me = event.event as MouseEvent;
+  ctxMenuTargetType.value = 'edge';
+  ctxMenuEdgeId.value = edgeId;
+  ctxMenuNodeId.value = null;
+  ctxMenuPosition.value = { x: me.clientX, y: me.clientY };
   ctxMenuVisible.value = true;
 }
 
 function closeContextMenu() {
   ctxMenuVisible.value = false;
+  ctxMenuTargetType.value = null;
   ctxMenuNodeId.value = null;
+  ctxMenuEdgeId.value = null;
 }
 
 // --- BOM panel ---
@@ -1195,73 +1260,6 @@ onUnmounted(() => {
   color: var(--text-primary);
 }
 
-.edge-inline-edit {
-  position: absolute;
-  z-index: 100;
-  transform: translate(-50%, -50%);
-  display: flex;
-  align-items: center;
-  border: 2px solid var(--border-default);
-  border-radius: var(--radius-sm);
-  box-shadow: 3px 3px 0px var(--text-primary);
-  background: var(--bg-color);
-}
-.edge-inline-edit:focus-within {
-  border-color: var(--accent-blue);
-}
-.edge-inline-edit input {
-  width: 44px;
-  height: 24px;
-  padding: 0 2px;
-  margin: 0;
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--text-primary);
-  background: transparent;
-  border: none;
-  text-align: center;
-  outline: none;
-  -moz-appearance: textfield;
-}
-.edge-inline-edit input::-webkit-outer-spin-button,
-.edge-inline-edit input::-webkit-inner-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
-}
-.edge-edit-btn {
-  width: 18px;
-  height: 24px;
-  padding: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-family: var(--font-mono);
-  font-size: 13px;
-  font-weight: 800;
-  color: var(--text-muted);
-  background: var(--bg-surface);
-  border: none;
-  border-radius: 0;
-  cursor: pointer;
-  transition: color var(--transition-fast), background var(--transition-fast);
-  outline: none;
-  user-select: none;
-}
-.edge-edit-btn:hover {
-  color: var(--text-primary);
-  background: var(--bg-hover);
-}
-.edge-edit-btn:active {
-  color: var(--accent-blue);
-  background: var(--bg-deep);
-}
-.edge-edit-down {
-  border-right: 2px solid var(--border-default);
-}
-.edge-edit-up {
-  border-left: 2px solid var(--border-default);
-}
 </style>
 
 <style>

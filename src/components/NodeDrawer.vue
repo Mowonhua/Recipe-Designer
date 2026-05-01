@@ -175,6 +175,17 @@
       </n-tabs>
     </n-drawer-content>
   </n-drawer>
+
+  <!-- Confirm Dialog -->
+  <ConfirmDialog
+    :visible="confirmDialog.show"
+    :title="confirmDialog.title"
+    :message="confirmDialog.message"
+    :show-cancel="confirmDialog.showCancel"
+    :confirm-danger="confirmDialog.confirmDanger"
+    @confirm="confirmDialog.onConfirm(); closeConfirmDialog()"
+    @cancel="closeConfirmDialog"
+  />
 </template>
 
 <script setup lang="ts">
@@ -188,8 +199,29 @@ import { v4 as uuidv4 } from 'uuid';
 import { useI18n } from 'vue-i18n';
 import { useStore } from '../store';
 import type { ItemNode, RecipeSlot, FlowEdge } from '../store';
+import ConfirmDialog from './ConfirmDialog.vue';
 
 const { t } = useI18n();
+
+const confirmDialog = ref<{
+  show: boolean;
+  title: string;
+  message: string;
+  showCancel: boolean;
+  confirmDanger: boolean;
+  onConfirm: () => void;
+}>({
+  show: false,
+  title: '',
+  message: '',
+  showCancel: true,
+  confirmDanger: false,
+  onConfirm: () => {},
+});
+
+function closeConfirmDialog() {
+  confirmDialog.value.show = false;
+}
 
 const props = defineProps<{
   visible: boolean;
@@ -222,7 +254,14 @@ function onIconFileChange(e: Event) {
   const file = input.files?.[0];
   if (!file) return;
   if (file.size > 256 * 1024) {
-    alert(t('drawer.imageTooLarge'));
+    confirmDialog.value = {
+      show: true,
+      title: t('dialog.confirm'),
+      message: t('drawer.imageTooLarge'),
+      showCancel: false,
+      confirmDanger: false,
+      onConfirm: () => {},
+    };
     input.value = '';
     return;
   }
@@ -354,8 +393,14 @@ function addNewSlot() {
 
 function deleteSlot(slotId: string) {
   if (!props.node) return;
-  if (!confirm(t('drawer.deleteSlotConfirm'))) return;
-  store.deleteSlot(props.node.id, slotId);
+  confirmDialog.value = {
+    show: true,
+    title: t('dialog.confirm'),
+    message: t('drawer.deleteSlotConfirm'),
+    showCancel: true,
+    confirmDanger: true,
+    onConfirm: () => { store.deleteSlot(props.node!.id, slotId); },
+  };
 }
 
 // --- Inputs editing ---

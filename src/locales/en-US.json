@@ -105,7 +105,12 @@
     "defaultSlotName": "Default",
     "edgeQuantity": "Edge quantity:",
     "calculateBom": "Calculate BOM",
-    "newGroup": "New Group"
+    "newGroup": "New Group",
+    "disconnectAllEdges": "Disconnect All Edges",
+    "disconnectOutgoingEdges": "Disconnect Outgoing",
+    "disconnectIncomingEdges": "Disconnect Incoming",
+    "deleteNode": "Delete Node",
+    "disconnectEdge": "Disconnect Edge"
   },
   "group": {
     "items": "items",
@@ -172,5 +177,10 @@
     "catalystMissing": "Required catalyst missing for \"{slotName}\" on \"{nodeName}\"",
     "rawMaterial": "\"{nodeName}\" is a raw material — no production recipe to calculate.",
     "noActiveSlot": "\"{nodeName}\" has no active recipe slot."
+  },
+  "dialog": {
+    "ok": "OK",
+    "cancel": "Cancel",
+    "confirm": "Confirm"
   }
 }

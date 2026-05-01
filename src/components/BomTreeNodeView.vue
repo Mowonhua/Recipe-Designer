@@ -128,7 +128,7 @@ function fmtNum(v: number): string {
 }
 
 .node-row.raw { border-left: 3px solid var(--text-muted); }
-.node-row.byproduct { border-left: 3px solid var(--accent-blue); }
+.node-row.byproduct { border-left: 3px solid var(--accent-tan); }
 .node-row.surplus { border-left: 3px solid var(--accent-red); }
 .node-row.blocked { border-left: 3px solid var(--accent-red); opacity: 0.6; }
 .node-row.cycle { border-left: 3px solid var(--accent-amber); opacity: 0.6; }
@@ -171,7 +171,7 @@ function fmtNum(v: number): string {
   border-radius: var(--radius-sm);
 }
 .flag.raw { background: var(--text-muted); color: var(--bg-color); }
-.flag.bp { background: var(--accent-blue); color: #fff; }
+.flag.bp { background: var(--accent-tan); color: #fff; }
 .flag.surplus { background: var(--accent-red); color: #fff; }
 .flag.blocked { background: var(--accent-red); color: #fff; }
 .flag.cycle { background: var(--accent-amber); color: var(--text-primary); }
@@ -227,7 +227,7 @@ function fmtNum(v: number): string {
 .byproducts-list {
   margin-left: 12px;
   padding-left: 8px;
-  border-left: var(--border-width-sm) dashed var(--accent-blue);
+  border-left: var(--border-width-sm) dashed var(--accent-tan);
   margin-top: 2px;
   margin-bottom: 6px;
 }
@@ -240,9 +240,9 @@ function fmtNum(v: number): string {
   font-size: 10px;
 }
 
-.bp-arrow { color: var(--accent-blue); font-size: 10px; }
-.bp-name { color: var(--accent-blue); }
-.bp-qty { color: var(--accent-blue); }
+.bp-arrow { color: var(--accent-tan); font-size: 10px; }
+.bp-name { color: var(--accent-tan); }
+.bp-qty { color: var(--accent-tan); }
 .bp-offset { color: var(--accent-green); font-size: 9px; }
 .bp-row.consumed { opacity: 0.6; }
 </style>

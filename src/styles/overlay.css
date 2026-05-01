@@ -1,0 +1,243 @@
+/* ============================================
+   Overlay Styles — unified base styles for
+   context menus, inline editors, and dialogs.
+   Imported once in main.ts; available everywhere.
+   ============================================ */
+
+/* ---- Context Menu ---- */
+
+.ol-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 9998;
+}
+
+.ol-menu {
+  position: fixed;
+  z-index: 9999;
+  background: var(--panel-bg);
+  border: var(--border-width-md) solid var(--border-default);
+  box-shadow: var(--shadow-modal);
+  min-width: 140px;
+  user-select: none;
+}
+
+.ol-menu-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 8px 16px;
+  text-align: left;
+  background: none;
+  border: none;
+  border-bottom: var(--border-width-sm) solid var(--border-default);
+  font-family: var(--font-ui);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: background var(--transition-fast), padding-left var(--transition-fast);
+}
+
+.ol-menu-item:last-child {
+  border-bottom: none;
+}
+
+.ol-menu-item:hover:not(.disabled) {
+  background: var(--bg-hover);
+  padding-left: 22px;
+}
+
+.ol-menu-item.disabled {
+  color: var(--text-disabled);
+  cursor: default;
+}
+
+.ol-menu-item.danger {
+  color: var(--accent-red);
+}
+
+.ol-menu-item.danger:hover {
+  background: var(--accent-red);
+  color: var(--bg-color);
+}
+
+.ol-menu-shortcut {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-left: 24px;
+}
+
+/* ---- Confirm Dialog ---- */
+
+.ol-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.4);
+}
+
+.ol-dialog {
+  background: var(--panel-bg);
+  border: var(--border-width-md) solid var(--border-default);
+  box-shadow: var(--shadow-modal);
+  min-width: 320px;
+  max-width: 480px;
+  display: flex;
+  flex-direction: column;
+}
+
+.ol-dialog-header {
+  padding: 16px 20px 0;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 900;
+  text-transform: uppercase;
+  color: var(--text-primary);
+}
+
+.ol-dialog-body {
+  padding: 12px 20px 20px;
+  font-family: var(--font-ui);
+  font-size: 14px;
+  color: var(--text-main);
+  line-height: 1.5;
+}
+
+.ol-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 20px;
+  border-top: var(--border-width-sm) solid var(--border-subtle);
+}
+
+/* ---- Dialog Buttons ---- */
+
+.ol-btn {
+  padding: 6px 18px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  border: var(--border-width-md) solid var(--border-default);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+}
+
+.ol-btn:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 2px 2px 0px var(--border-default);
+}
+
+.ol-btn:active {
+  transform: translate(1px, 1px);
+  box-shadow: none;
+}
+
+.ol-btn-primary {
+  background: var(--accent-blue);
+  color: #ffffff;
+  border-color: var(--accent-blue);
+}
+
+.ol-btn-primary:hover {
+  box-shadow: 2px 2px 0px var(--border-default);
+}
+
+.ol-btn-danger {
+  background: var(--accent-red);
+  color: #ffffff;
+  border-color: var(--accent-red);
+}
+
+.ol-btn-danger:hover {
+  box-shadow: 2px 2px 0px var(--border-default);
+}
+
+/* ---- Inline Edit ---- */
+
+.ol-inline-edit {
+  position: absolute;
+  z-index: 100;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  border: var(--border-width-md) solid var(--border-default);
+  box-shadow: 3px 3px 0px var(--border-default);
+  background: var(--bg-color);
+}
+
+.ol-inline-edit:focus-within {
+  border-color: var(--accent-blue);
+}
+
+.ol-inline-edit-input {
+  width: 44px;
+  height: 24px;
+  padding: 0 2px;
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-primary);
+  background: transparent;
+  border: none;
+  text-align: center;
+  outline: none;
+  -moz-appearance: textfield;
+}
+
+.ol-inline-edit-input::-webkit-outer-spin-button,
+.ol-inline-edit-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.ol-inline-edit-btn {
+  width: 18px;
+  height: 24px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--text-muted);
+  background: var(--bg-surface);
+  border: none;
+  border-radius: 0;
+  cursor: pointer;
+  transition: color var(--transition-fast), background var(--transition-fast);
+  outline: none;
+  user-select: none;
+}
+
+.ol-inline-edit-btn:hover {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}
+
+.ol-inline-edit-btn:active {
+  color: var(--accent-blue);
+  background: var(--bg-deep);
+}
+
+.ol-inline-edit-btn-minus {
+  border-right: var(--border-width-md) solid var(--border-default);
+}
+
+.ol-inline-edit-btn-plus {
+  border-left: var(--border-width-md) solid var(--border-default);
+}

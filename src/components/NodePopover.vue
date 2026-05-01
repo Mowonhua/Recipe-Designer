@@ -259,8 +259,8 @@ const activeByproducts = computed(() => {
   color: var(--text-muted);
   font-family: var(--font-mono), monospace;
 }
-.io-row.byproduct .io-name { color: var(--accent-link); }
-.io-row.byproduct .io-qty { color: var(--accent-link); }
+.io-row.byproduct .io-name { color: var(--accent-tan); }
+.io-row.byproduct .io-qty { color: var(--accent-tan); }
 
 .no-data {
   font-size: 10px; color: var(--text-disabled); font-style: italic;

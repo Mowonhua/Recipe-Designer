@@ -181,21 +181,31 @@
     <Teleport to="body">
       <div
         v-if="contextMenu.show"
-        class="context-menu"
+        class="ol-menu"
         :style="{ left: contextMenu.x + 'px', top: contextMenu.y + 'px' }"
         @click.stop
       >
-        <button class="ctx-item" @click="contextMenuEdit">{{ $t('dict.edit') }}</button>
-        <button class="ctx-item danger" @click="contextMenuDelete">{{ $t('dict.delete') }}</button>
+        <button class="ol-menu-item" @click="contextMenuEdit">{{ $t('dict.edit') }}</button>
+        <button class="ol-menu-item danger" @click="contextMenuDelete">{{ $t('dict.delete') }}</button>
       </div>
     </Teleport>
 
     <!-- Overlay to close context menu on any click -->
     <div
       v-if="contextMenu.show"
-      class="ctx-overlay"
+      class="ol-overlay"
       @click="closeContextMenu"
     ></div>
+
+    <!-- Confirm Dialog -->
+    <ConfirmDialog
+      :visible="confirmDialog.show"
+      :title="confirmDialog.title"
+      :message="confirmDialog.message"
+      :confirm-danger="confirmDialog.confirmDanger"
+      @confirm="confirmDialog.onConfirm(); closeConfirmDialog()"
+      @cancel="closeConfirmDialog"
+    />
   </aside>
 </template>
 
@@ -204,6 +214,7 @@ import { ref, computed, nextTick, onMounted, onUnmounted } from 'vue';
 import { v4 as uuidv4 } from 'uuid';
 import { useI18n } from 'vue-i18n';
 import { useStore, type ItemNode, type Machine } from '../store';
+import ConfirmDialog from './ConfirmDialog.vue';
 
 const { t } = useI18n();
 const store = useStore();
@@ -284,9 +295,13 @@ function cancelItemEdit() {
 function deleteItem(nodeId: string) {
   const node = store.nodes.find(n => n.id === nodeId);
   if (!node) return;
-  if (confirm(t('dict.deleteItemConfirm', { name: node.name }))) {
-    store.deleteNodes([nodeId]);
-  }
+  confirmDialog.value = {
+    show: true,
+    title: t('dialog.confirm'),
+    message: t('dict.deleteItemConfirm', { name: node.name }),
+    confirmDanger: true,
+    onConfirm: () => { store.deleteNodes([nodeId]); },
+  };
 }
 
 // --- Machine CRUD ---
@@ -370,9 +385,13 @@ function onSpeedWheel(e: WheelEvent) {
 function deleteMachineById(machineId: string) {
   const machine = store.machines.find(m => m.id === machineId);
   if (!machine) return;
-  if (confirm(t('dict.deleteMachineConfirm', { name: machine.name }))) {
-    store.deleteMachine(machineId);
-  }
+  confirmDialog.value = {
+    show: true,
+    title: t('dialog.confirm'),
+    message: t('dict.deleteMachineConfirm', { name: machine.name }),
+    confirmDanger: true,
+    onConfirm: () => { store.deleteMachine(machineId); },
+  };
 }
 
 // --- Drag-to-Canvas ---
@@ -411,6 +430,24 @@ const contextMenu = ref<{
   type: 'item',
   targetId: '',
 });
+
+const confirmDialog = ref<{
+  show: boolean;
+  title: string;
+  message: string;
+  confirmDanger: boolean;
+  onConfirm: () => void;
+}>({
+  show: false,
+  title: '',
+  message: '',
+  confirmDanger: false,
+  onConfirm: () => {},
+});
+
+function closeConfirmDialog() {
+  confirmDialog.value.show = false;
+}
 
 function openItemContextMenu(event: MouseEvent, node: ItemNode) {
   const menuWidth = 120;
@@ -871,53 +908,4 @@ onUnmounted(() => window.removeEventListener('keydown', onKeyDown));
   box-shadow: 4px 4px 0px var(--border-default);
 }
 
-.context-menu {
-  position: fixed;
-  background: var(--panel-bg);
-  border: var(--border-width-md) solid var(--border-default);
-  box-shadow: var(--shadow-modal);
-  z-index: 9999;
-  display: flex;
-  flex-direction: column;
-  min-width: 140px;
-}
-
-.ctx-item {
-  padding: var(--spacing-md) var(--spacing-lg);
-  text-align: left;
-  background: none;
-  border: none;
-  font-family: var(--font-mono);
-  font-weight: 800;
-  font-size: 12px;
-  text-transform: uppercase;
-  color: var(--text-primary);
-  cursor: pointer;
-  border-bottom: var(--border-width-sm) solid var(--border-default);
-  transition: all var(--transition-fast);
-}
-
-.ctx-item:last-child {
-  border-bottom: none;
-}
-
-.ctx-item:hover {
-  background: var(--bg-hover);
-  padding-left: calc(var(--spacing-lg) + 6px);
-}
-
-.ctx-item.danger {
-  color: var(--accent-red);
-}
-
-.ctx-item.danger:hover {
-  background: var(--accent-red);
-  color: var(--bg-color); /* invert */
-}
-
-.ctx-overlay {
-  position: fixed;
-  top: 0; left: 0; right: 0; bottom: 0;
-  z-index: 9998;
-}
 </style>

@@ -1,4 +1,5 @@
 ﻿import './styles/tokens.css';
+import './styles/overlay.css';
 import { createApp } from 'vue';
 import { createPinia } from 'pinia';
 import i18n from './locales';

@@ -105,7 +105,12 @@
     "defaultSlotName": "默认",
     "edgeQuantity": "连线数量：",
     "calculateBom": "计算物料",
-    "newGroup": "新建分组"
+    "newGroup": "新建分组",
+    "disconnectAllEdges": "断开所有连线",
+    "disconnectOutgoingEdges": "断开所有发出连线",
+    "disconnectIncomingEdges": "断开所有接收连线",
+    "deleteNode": "删除节点",
+    "disconnectEdge": "断开连线"
   },
   "group": {
     "items": "个物品",
@@ -172,5 +177,10 @@
     "catalystMissing": "节点 \"{nodeName}\" 的配方槽 \"{slotName}\" 缺少必需的催化剂",
     "rawMaterial": "\"{nodeName}\" 是基础原料 — 没有可用于计算的生产配方。",
     "noActiveSlot": "\"{nodeName}\" 没有激活的配方槽。"
+  },
+  "dialog": {
+    "ok": "确定",
+    "cancel": "取消",
+    "confirm": "确认"
   }
 }

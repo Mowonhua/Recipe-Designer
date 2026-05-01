@@ -95,7 +95,7 @@ td {
 .summary-row:hover { background: var(--bg-hover); }
 
 .byproduct-row .col-qty,
-.byproduct-row .col-rate { color: var(--accent-blue); }
+.byproduct-row .col-rate { color: var(--accent-tan); }
 
 .surplus-row .col-qty,
 .surplus-row .col-rate { color: var(--accent-red); }
@@ -121,6 +121,6 @@ td {
 }
 
 .raw-tag { background: var(--text-muted); color: var(--bg-color); }
-.bp-tag { background: var(--accent-blue); color: #fff; }
+.bp-tag { background: var(--accent-tan); color: #fff; }
 .surplus-tag { background: var(--accent-red); color: #fff; }
 </style>

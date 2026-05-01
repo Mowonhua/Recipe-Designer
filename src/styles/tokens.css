@@ -40,6 +40,7 @@
   --accent-green: #008855;
   --accent-green-bright: #00AA66;
   --accent-red: #E33939;
+  --accent-tan: #8B5E3C;
 
   /* ---- Border Radii (Minimalist, sharp edges) ---- */
   --radius-sm: 0px;
@@ -120,6 +121,7 @@
   --accent-green: #10b981;
   --accent-green-bright: #3fb950;
   --accent-red: #ef4444;
+  --accent-tan: #D4A574;
 
   --shadow-card: 4px 4px 0px rgba(255, 255, 255, 0.22);
   --shadow-modal: 8px 8px 0px rgba(255, 255, 255, 0.22);
