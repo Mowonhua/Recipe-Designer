@@ -56,6 +56,8 @@
   --shadow-node: 2px 2px 0px rgba(17, 17, 17, 1);
   --shadow-node-hover: 4px 4px 0px rgba(17, 17, 17, 1);
   --shadow-group: 4px 4px 0px rgba(17, 17, 17, 1);
+  --shadow-inset-soft: inset 2px 2px 0px rgba(0, 0, 0, 0.1);
+  --shadow-inset-panel: inset 2px 2px 0px rgba(17, 17, 17, 0.1);
 
   /* ---- Transitions ---- */
   --transition-fast: 0.15s;
@@ -119,12 +121,14 @@
   --accent-green-bright: #3fb950;
   --accent-red: #ef4444;
 
-  --shadow-card: 4px 4px 0px rgba(0, 0, 0, 1);
-  --shadow-modal: 8px 8px 0px rgba(0, 0, 0, 1);
-  --shadow-menu: 4px 4px 0px rgba(0, 0, 0, 1);
-  --shadow-node: 2px 2px 0px rgba(0, 0, 0, 1);
-  --shadow-node-hover: 4px 4px 0px rgba(0, 0, 0, 1);
-  --shadow-group: 4px 4px 0px rgba(0, 0, 0, 1);
+  --shadow-card: 4px 4px 0px rgba(255, 255, 255, 0.22);
+  --shadow-modal: 8px 8px 0px rgba(255, 255, 255, 0.22);
+  --shadow-menu: 4px 4px 0px rgba(255, 255, 255, 0.22);
+  --shadow-node: 2px 2px 0px rgba(255, 255, 255, 0.24);
+  --shadow-node-hover: 4px 4px 0px rgba(255, 255, 255, 0.28);
+  --shadow-group: 4px 4px 0px rgba(255, 255, 255, 0.22);
+  --shadow-inset-soft: inset 2px 2px 0px rgba(255, 255, 255, 0.12);
+  --shadow-inset-panel: inset 2px 2px 0px rgba(255, 255, 255, 0.16);
 
   --spacing-xs: 4px;
   --spacing-sm: 8px;
