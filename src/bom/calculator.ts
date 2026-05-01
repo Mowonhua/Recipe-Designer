@@ -130,9 +130,9 @@ function computeOneTime(
             sourceNodeColor: bp.itemColor,
             quantity: bp.quantity,
             child: { ...bpChild, isByproduct: true },
+            isByproduct: true,
           });
         } else {
-          // Raw/byproduct item - add as leaf edge
           inputs.push({
             edgeId: `byproduct-${bp.itemId}`,
             sourceNodeId: bpNode.id,
@@ -140,6 +140,7 @@ function computeOneTime(
             sourceNodeColor: bp.itemColor,
             quantity: bp.quantity,
             child: null,
+            isByproduct: true,
           });
         }
       }
@@ -307,6 +308,7 @@ function collectSummary(node: BomTreeNode, request: BomRequest, map: Map<string,
       collectSummary(edge.child, request, map, state);
     } else {
       // Raw material leaf: add from edge info
+      const isBpLeaf = edge.isByproduct === true;
       const rawNode = state.nodes.find(n => n.id === edge.sourceNodeId);
       const existing = map.get(edge.sourceNodeId);
       if (existing) {
@@ -315,6 +317,7 @@ function collectSummary(node: BomTreeNode, request: BomRequest, map: Map<string,
         } else {
           existing.totalRate = (existing.totalRate || 0) + edge.quantity;
         }
+        if (isBpLeaf) existing.isByproduct = true;
       } else {
         map.set(edge.sourceNodeId, {
           itemId: edge.sourceNodeId,
@@ -322,8 +325,8 @@ function collectSummary(node: BomTreeNode, request: BomRequest, map: Map<string,
           itemColor: edge.sourceNodeColor,
           totalQuantity: request.mode === 'one-time' ? edge.quantity : undefined,
           totalRate: request.mode === 'continuous' ? edge.quantity : undefined,
-          isRawMaterial: true,
-          isByproduct: false,
+          isRawMaterial: !isBpLeaf,
+          isByproduct: isBpLeaf,
           isSurplus: false,
         });
       }
@@ -331,9 +334,12 @@ function collectSummary(node: BomTreeNode, request: BomRequest, map: Map<string,
 
   }
 
-  // Collect byproducts from this node
-  for (const bp of node.byproducts) {
-    addByproductToSummary(bp, request, map);
+  // Collect byproducts from this node (skip in independent-output mode —
+  // byproducts are already accounted for as input edges in collectSummary)
+  if (request.byproductStrategy !== 'independent-output') {
+    for (const bp of node.byproducts) {
+      addByproductToSummary(bp, request, map);
+    }
   }
 }
 

@@ -48,6 +48,7 @@ export interface BomTreeEdge {
   sourceNodeColor: string;
   quantity: number;
   child: BomTreeNode | null;
+  isByproduct?: boolean;
 }
 
 export interface BomByproduct {
