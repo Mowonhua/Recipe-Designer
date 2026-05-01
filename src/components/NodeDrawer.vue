@@ -156,21 +156,21 @@
 
         <!-- Relations Tab -->
         <n-tab-pane name="relations" tab="Relations">
-          <div class="section-label">Upstream (Produced by)</div>
-          <div v-for="rel in upstream" :key="rel.id" class="relation-row" @click="flyTo(rel.id)">
-            <span class="io-dot" :style="{ background: rel.color }"></span>
-            <span class="relation-name">{{ rel.name }}<template v-if="rel.type === 'byproduct'"> (byproduct)</template></span>
-            <span class="relation-qty">×{{ rel.quantity }}</span>
-          </div>
-          <div v-if="upstream.length === 0" class="no-data">No upstream producers</div>
-
-          <div class="section-label" style="margin-top: 16px;">Downstream (Consumed by)</div>
+          <div class="section-label">Downstream (Consumed by)</div>
           <div v-for="rel in downstream" :key="rel.id" class="relation-row" @click="flyTo(rel.id)">
             <span class="io-dot" :style="{ background: rel.color }"></span>
             <span class="relation-name">{{ rel.name }}<template v-if="rel.type === 'byproduct'"> (byproduct)</template></span>
             <span class="relation-qty">×{{ rel.quantity }}</span>
           </div>
           <div v-if="downstream.length === 0" class="no-data">No downstream consumers</div>
+
+          <div class="section-label" style="margin-top: 16px;">Upstream (Produced by)</div>
+          <div v-for="rel in upstream" :key="rel.id" class="relation-row" @click="flyTo(rel.id)">
+            <span class="io-dot" :style="{ background: rel.color }"></span>
+            <span class="relation-name">{{ rel.name }}<template v-if="rel.type === 'byproduct'"> (byproduct)</template></span>
+            <span class="relation-qty">×{{ rel.quantity }}</span>
+          </div>
+          <div v-if="upstream.length === 0" class="no-data">No upstream producers</div>
         </n-tab-pane>
       </n-tabs>
     </n-drawer-content>
@@ -630,8 +630,12 @@ function flyTo(nodeId: string) {
   padding: var(--spacing-sm) var(--spacing-md);
   margin-bottom: var(--spacing-sm);
   display: flex;
-  align-items: center;
-  gap: var(--spacing-md);
+  gap: 8px;
+}
+.input-group {
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--spacing-sm);
 }
 
 .group-label, .section-label {
@@ -663,6 +667,10 @@ function flyTo(nodeId: string) {
   font-family: var(--font-mono);
   font-size: 13px;
   font-weight: 800;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  word-break: normal;
 }
 
 .relation-row {
@@ -726,6 +734,7 @@ function flyTo(nodeId: string) {
 :deep(.n-tabs-nav-scroll-wrapper) {
   padding-inline: var(--spacing-md);
   box-sizing: border-box;
+  padding-inline: 12px;
 }
 
 :deep(.n-tabs-nav-scroll-content) {
@@ -739,7 +748,7 @@ function flyTo(nodeId: string) {
   text-transform: uppercase;
 }
 
-:deep(.n-input), :deep(.n-input-number), :deep(.n-select) {
+:deep(.n-input), :deep(.n-select) {
   border-radius: var(--radius-sm) !important;
   border: var(--border-width-md) solid var(--border-default) !important;
   --n-border: none !important;
@@ -761,20 +770,16 @@ function flyTo(nodeId: string) {
   font-family: var(--font-mono);
   text-transform: uppercase;
   font-weight: 900;
-  border: var(--border-width-md) solid var(--border-default) !important;
-  box-shadow: 2px 2px 0px var(--border-default) !important;
   border-radius: var(--radius-sm) !important;
   transition: transform var(--transition-fast), box-shadow var(--transition-fast) !important;
 }
 
 :deep(.n-button:hover) {
   transform: translate(-3px, -3px);
-  box-shadow: 5px 5px 0px var(--border-default) !important;
 }
 
 :deep(.n-button:active) {
   transform: translate(2px, 2px);
-  box-shadow: none !important;
 }
 
 :deep(.n-drawer) {
