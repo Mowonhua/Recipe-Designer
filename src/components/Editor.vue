@@ -3,6 +3,9 @@
     <DictionaryPanel />
     <div ref="canvasWrapRef" class="canvas-wrap">
       <div class="canvas-toolbar">
+        <button type="button" class="toolbar-btn" @click="relayout()" title="Auto-layout all nodes">
+          Relayout
+        </button>
         <button type="button" class="toolbar-btn" @click="store.deleteOrphans()" title="Delete all orphan nodes">
           Clean Orphans
         </button>
@@ -73,7 +76,7 @@ import '@vue-flow/controls/dist/style.css';
 import '@vue-flow/minimap/dist/style.css';
 import { v4 as uuidv4 } from 'uuid';
 import dagre from '@dagrejs/dagre';
-import { forceSimulation, forceCollide } from 'd3-force';
+import { forceSimulation, forceCollide, forceY } from 'd3-force';
 import type { Connection, NodeChange, EdgeChange, EdgeMouseEvent } from '@vue-flow/core';
 import type { FlowEdge, RecipeSlot } from '../store';
 import { useStore } from '../store';
@@ -86,7 +89,7 @@ import DictionaryPanel from './DictionaryPanel.vue';
 import SearchOverlay from './SearchOverlay.vue';
 
 const store = useStore();
-const { setCenter, viewport } = useVueFlow();
+const { setCenter, viewport, fitView } = useVueFlow();
 
 const nodeTypes: any = { item: markRaw(ItemNode), group: markRaw(GroupNode) };
 
@@ -144,6 +147,159 @@ function applyLayout() {
   // Fit view after a small delay to ensure rendering
   setTimeout(() => {
     // Optionally fitView()
+  }, 50);
+}
+
+function relayout() {
+  const nodeIds = new Set(store.nodes.map(n => n.id));
+  if (nodeIds.size === 0) return;
+
+  // Build adjacency: find edges pointing INTO each node (inputs)
+  const incomingEdges = new Map<string, string[]>(); // targetId -> sourceId[]
+  for (const node of store.nodes) {
+    incomingEdges.set(node.id, []);
+  }
+  for (const e of store.edges) {
+    if (nodeIds.has(e.source) && nodeIds.has(e.target) && e.edge_type === 'input') {
+      incomingEdges.get(e.target)?.push(e.source);
+    }
+  }
+
+  // Compute max depth for each node using longest path from any root
+  // Root = node with no incoming input edges (raw materials or disconnected)
+  const depth = new Map<string, number>();
+  const visited = new Set<string>();
+
+  function computeDepth(id: string): number {
+    if (depth.has(id)) return depth.get(id)!;
+    if (visited.has(id)) return 0; // cycle: treat as depth 0
+    visited.add(id);
+
+    const sources = incomingEdges.get(id) || [];
+    if (sources.length === 0) {
+      depth.set(id, 0);
+      return 0;
+    }
+    let maxParentDepth = 0;
+    for (const src of sources) {
+      maxParentDepth = Math.max(maxParentDepth, computeDepth(src));
+    }
+    const d = maxParentDepth + 1;
+    depth.set(id, d);
+    return d;
+  }
+
+  for (const id of nodeIds) {
+    computeDepth(id);
+  }
+
+  // Group nodes by depth level
+  const levels = new Map<number, string[]>();
+  let maxLevel = 0;
+  for (const [id, d] of depth) {
+    if (!levels.has(d)) levels.set(d, []);
+    levels.get(d)!.push(id);
+    maxLevel = Math.max(maxLevel, d);
+  }
+
+  // Layout: depth 0 at bottom, maxLevel at top
+  // Y increases downward in Vue Flow, so invert: deeper level = smaller Y (higher on screen)
+  const LAYER_GAP = 160;  // vertical gap between layers
+  const NODE_GAP = 40;    // horizontal gap between nodes in same layer
+  const NODE_W = 170;
+  const NODE_H = 60;
+
+  // First pass: assign Y positions based on depth
+  const newPos = new Map<string, { x: number; y: number }>();
+  for (const [d, ids] of levels) {
+    const y = (maxLevel - d) * LAYER_GAP;
+    for (const id of ids) {
+      newPos.set(id, { x: 0, y });
+    }
+  }
+
+  // Second pass: order nodes within each layer to minimize edge crossings
+  // Use a barycenter heuristic: for each level, sort nodes by the average X of their parents
+  // Start from level 0 (just spread evenly) then work upward
+  for (let d = 0; d <= maxLevel; d++) {
+    const ids = levels.get(d) || [];
+    if (d === 0) {
+      // Distribute level 0 nodes evenly, centered
+      const totalWidth = ids.length * NODE_W + (ids.length - 1) * NODE_GAP;
+      ids.forEach((id, i) => {
+        const pos = newPos.get(id)!;
+        pos.x = -totalWidth / 2 + i * (NODE_W + NODE_GAP);
+      });
+    } else {
+      // Sort by barycenter of parent positions
+      const withBary = ids.map(id => {
+        const parents = incomingEdges.get(id) || [];
+        if (parents.length === 0) {
+          return { id, bary: 0 };
+        }
+        const bary = parents.reduce((sum, pid) => {
+          const ppos = newPos.get(pid);
+          return sum + (ppos ? ppos.x + NODE_W / 2 : 0);
+        }, 0) / parents.length;
+        return { id, bary };
+      });
+      withBary.sort((a, b) => a.bary - b.bary);
+
+      // Assign X positions in sorted order
+      const totalWidth = ids.length * NODE_W + (ids.length - 1) * NODE_GAP;
+      withBary.forEach((item, i) => {
+        const pos = newPos.get(item.id)!;
+        pos.x = -totalWidth / 2 + i * (NODE_W + NODE_GAP);
+      });
+    }
+  }
+
+  // Third pass: use d3-force with locked Y positions to refine X positions
+  // This minimizes edge crossings and adjusts spacing
+  const simNodes = store.nodes.map(n => {
+    const pos = newPos.get(n.id) || { x: 0, y: 0 };
+    return {
+      id: n.id,
+      x: pos.x + NODE_W / 2,
+      y: pos.y + NODE_H / 2,
+      fy: pos.y + NODE_H / 2,  // lock Y to layer
+      targetY: pos.y + NODE_H / 2,
+    };
+  });
+
+  const sim = forceSimulation(simNodes as any)
+    .force('collide', forceCollide((NODE_W + NODE_GAP) / 2))
+    .force('y', forceY((d: any) => d.targetY).strength(1))
+    .stop();
+
+  // Run simulation to convergence
+  for (let i = 0; i < 300; i++) {
+    sim.tick();
+  }
+  sim.stop();
+
+  // Apply positions back
+  const moves: Array<{ id: string; type?: 'node' | 'group'; from: { x: number; y: number }; to: { x: number; y: number } }> = [];
+  for (const sn of simNodes) {
+    const storeNode = store.nodes.find(n => n.id === sn.id);
+    if (!storeNode) continue;
+    const from = { ...storeNode.position };
+    const to = { x: sn.x - NODE_W / 2, y: sn.y - NODE_H / 2 };
+    if (from.x !== to.x || from.y !== to.y) {
+      moves.push({ id: sn.id, type: 'node', from, to });
+      storeNode.position = to;
+    }
+  }
+
+  if (moves.length > 0) {
+    store.moveNodes(moves);
+  }
+
+  syncFromStore();
+
+  // Fit view after layout
+  setTimeout(() => {
+    fitView({ duration: 400 });
   }, 50);
 }
 
@@ -784,12 +940,27 @@ onUnmounted(() => {
 
 .canvas-toolbar {
   position: absolute; top: 8px; left: 8px; z-index: 10;
+  display: flex; gap: 6px;
 }
 .toolbar-btn {
-  background: var(--bg-surface); border: 1px solid var(--border-default);
-  border-radius: var(--radius-md); padding: 5px 10px;
-  color: var(--text-muted); font-size: 10px; cursor: pointer;
+  background-color: var(--bg-color);
+  color: var(--text-primary);
+  border: 2px solid var(--border-default);
+  border-radius: var(--radius-md);
+  padding: 4px 10px;
+  font-size: 11px;
   font-family: var(--font-ui), sans-serif;
+  cursor: pointer;
+  box-shadow: 4px 4px 0px var(--text-primary);
+  transition: transform var(--transition-fast) var(--ease-smooth),
+              box-shadow var(--transition-fast) var(--ease-smooth);
 }
-.toolbar-btn:hover { color: var(--text-primary); border-color: var(--accent-link); }
+.toolbar-btn:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 5px 5px 0px var(--text-primary);
+}
+.toolbar-btn:active {
+  transform: translate(2px, 2px);
+  box-shadow: 2px 2px 0px var(--text-primary);
+}
 </style>
