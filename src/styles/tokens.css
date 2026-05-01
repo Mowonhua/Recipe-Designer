@@ -86,6 +86,10 @@
   --border-width-lg: 4px;
 
   --color-transparent: transparent;
+
+  /* ---- Icon: Standard Close X ---- */
+  --close-icon-thickness: 2px;
+  --close-icon-color: var(--accent-red);
 }
 
 [data-theme='dark'] {

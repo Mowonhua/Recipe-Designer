@@ -241,3 +241,34 @@
 .ol-inline-edit-btn-plus {
   border-left: var(--border-width-md) solid var(--border-default);
 }
+
+/* ---- Close Icon (CSS-drawn red X) ---- */
+
+.close-icon {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1em;
+  height: 1em;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.close-icon::before,
+.close-icon::after {
+  content: '';
+  position: absolute;
+  width: 100%;
+  height: var(--close-icon-thickness, 2px);
+  background-color: var(--close-icon-color, var(--accent-red));
+  border-radius: 1px;
+}
+
+.close-icon::before {
+  transform: rotate(45deg);
+}
+
+.close-icon::after {
+  transform: rotate(-45deg);
+}

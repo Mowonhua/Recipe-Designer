@@ -31,7 +31,7 @@
                 hidden
                 @change="onIconFileChange"
               />
-              <n-button v-if="editIcon" size="tiny" text @click="editIcon = ''" class="clear-btn" :title="$t('drawer.clear')">×</n-button>
+              <n-button v-if="editIcon" size="tiny" text @click="editIcon = ''" class="clear-btn" :title="$t('drawer.clear')"><span class="close-icon"></span></n-button>
             </div>
           </div>
           <div class="form-group">
@@ -51,7 +51,7 @@
             <div class="tags-wrap">
               <span v-for="(tag, i) in editTags" :key="i" class="tag-pill">
                 {{ tag }}
-                <span class="tag-remove" @click="removeTag(i)">×</span>
+                <span class="tag-remove close-icon" @click="removeTag(i)"></span>
               </span>
               <n-input
                 v-model:value="newTag"
@@ -108,7 +108,7 @@
               <label>{{ $t('drawer.tags') }}</label>
               <div class="tags-wrap">
                 <span v-for="(tag, i) in (editSlots[slot.id].tags || [])" :key="i" class="tag-pill small">
-                  {{ tag }} <span class="tag-remove" @click="removeSlotTag(slot.id, i)">×</span>
+                  {{ tag }} <span class="tag-remove close-icon" @click="removeSlotTag(slot.id, i)"></span>
                 </span>
                 <input
                   v-model="slotTagInputs[slot.id]"
@@ -185,7 +185,7 @@
                       {{ so.quantity }}
                     </template>
                   </span>
-                  <span class="so-card-remove" @click="removeSecondaryOutput(slot.id, i)">×</span>
+                  <span class="so-card-remove close-icon" @click="removeSecondaryOutput(slot.id, i)"></span>
                 </div>
                 <div class="so-card so-card-add" :class="{ open: addingByproduct[slot.id] }" @click.stop="startAddByproduct(slot.id)">
                   <span class="so-add-plus">+</span>
@@ -239,7 +239,7 @@
                 style="width: 80px"
                 @update:value="(v: number | null) => updateEdgeQty(edge.id, v || 1)"
               />
-              <n-button text size="tiny" type="error" @click="deleteEdgeById(edge.id)">×</n-button>
+              <n-button text size="tiny" type="error" @click="deleteEdgeById(edge.id)"><span class="close-icon"></span></n-button>
             </div>
             <div v-if="getSlotEdges(slot.id).length === 0" class="no-data">{{ $t('drawer.noInputEdges') }}</div>
           </div>
@@ -848,13 +848,12 @@ function flyTo(nodeId: string) {
 }
 
 .clear-btn {
-  font-size: 24px;
+  font-size: 14px;
   color: var(--accent-red);
   min-width: 24px;
   cursor: pointer;
   background: transparent;
   border: none;
-  font-weight: 900;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -925,7 +924,7 @@ function flyTo(nodeId: string) {
 }
 
 .tag-pill.small { padding: 2px 6px; font-size: 10px; }
-.tag-remove { cursor: pointer; color: var(--accent-red); margin-left: 4px; font-weight: 900;}
+.tag-remove { cursor: pointer; margin-left: 4px; font-size: 12px; }
 .tag-remove:hover { transform: scale(1.2); }
 
 .tag-input-inline, .tag-input-native {
@@ -1244,12 +1243,9 @@ function flyTo(nodeId: string) {
 
 .so-card-remove {
   cursor: pointer;
-  font-weight: 900;
-  font-size: 18px;
-  color: var(--accent-red);
+  font-size: 12px;
   flex-shrink: 0;
   padding: 0 4px;
-  line-height: 1;
   transition: transform var(--transition-fast);
 }
 
