@@ -59,6 +59,8 @@ export interface Group {
   name: string;
   children: string[];
   collapsed: boolean;
+  position?: { x: number; y: number };
+  size?: { width: number; height: number };
   summary_recipe?: {
     inputs: { item_id: string; quantity: number }[];
     outputs: { item_id: string; quantity: number }[];
@@ -130,18 +132,28 @@ class DeleteNodesCommand implements Command {
 
 class MoveNodesCommand implements Command {
   constructor(
-    private moves: Array<{ id: string; from: { x: number; y: number }; to: { x: number; y: number } }>
+    private moves: Array<{ id: string; type?: 'node' | 'group'; from: { x: number; y: number }; to: { x: number; y: number } }>
   ) {}
   execute(state: State) {
     for (const m of this.moves) {
-      const node = state.nodes.find(n => n.id === m.id);
-      if (node) node.position = { ...m.to };
+      if (m.type === 'group') {
+        const group = state.groups.find(g => g.id === m.id);
+        if (group && group.position) group.position = { ...m.to };
+      } else {
+        const node = state.nodes.find(n => n.id === m.id);
+        if (node) node.position = { ...m.to };
+      }
     }
   }
   undo(state: State) {
     for (const m of this.moves) {
-      const node = state.nodes.find(n => n.id === m.id);
-      if (node) node.position = { ...m.from };
+      if (m.type === 'group') {
+        const group = state.groups.find(g => g.id === m.id);
+        if (group && group.position) group.position = { ...m.from };
+      } else {
+        const node = state.nodes.find(n => n.id === m.id);
+        if (node) node.position = { ...m.from };
+      }
     }
   }
 }
@@ -352,7 +364,7 @@ export const useStore = defineStore('recipe-designer', () => {
     changeCounter.value++;
   }
 
-  function moveNodes(moves: Array<{ id: string; from: { x: number; y: number }; to: { x: number; y: number } }>) {
+  function moveNodes(moves: Array<{ id: string; type?: 'node' | 'group'; from: { x: number; y: number }; to: { x: number; y: number } }>) {
     if (moves.length === 0) return;
     commit(new MoveNodesCommand(moves));
     // Don't bump changeCounter for position-only changes (avoids re-sync loop with Vue Flow)
@@ -478,14 +490,42 @@ export const useStore = defineStore('recipe-designer', () => {
   }
 
   function addGroup(name: string, childIds: string[]) {
+    const id = uuidv4();
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    let hasChildren = false;
+    for (const childId of childIds) {
+      const child = nodes.value.find(n => n.id === childId);
+      if (child) {
+        hasChildren = true;
+        minX = Math.min(minX, child.position.x);
+        minY = Math.min(minY, child.position.y);
+        maxX = Math.max(maxX, child.position.x + 170);
+        maxY = Math.max(maxY, child.position.y + 60);
+      }
+    }
+    if (!hasChildren) {
+      minX = 0; minY = 0; maxX = 200; maxY = 100;
+    }
+    const padding = 40;
     const group: Group = {
-      id: uuidv4(),
+      id,
       name,
       children: childIds,
-      collapsed: false,
+      collapsed: true,
+      position: { x: minX - padding, y: minY - padding - 40 },
+      size: { width: (maxX - minX) + padding * 2, height: (maxY - minY) + padding * 2 + 40 },
     };
     groups.value.push(group);
+    updateGroupSummary(id);
     changeCounter.value++;
+  }
+
+  function updateGroupName(id: string, name: string) {
+    const group = groups.value.find(g => g.id === id);
+    if (group && name.trim()) {
+      group.name = name.trim();
+      changeCounter.value++;
+    }
   }
 
   function removeGroup(id: string) {
@@ -608,6 +648,7 @@ export const useStore = defineStore('recipe-designer', () => {
     placeNodeOnCanvas,
     isNodeOnCanvas,
     addGroup,
+    updateGroupName,
     removeGroup,
     toggleGroupCollapse,
     updateGroupSummary,

@@ -29,32 +29,23 @@ All application state is in a single Pinia store (`recipe-designer`). The data m
 - **`FlowEdge`** — connects nodes, represents item flow with quantity. Edges are slot-specific (`target_slot_id`). Two types: `'input'` (solid gray) and `'byproduct'` (dashed blue, no arrow).
 - **`Group`** — parent grouping of nodes, supports collapsed summary calculation.
 
-**Undo/redo** uses a Command pattern. `commit(command)` executes the command and pushes it onto the history stack (`maxHistory = 200`). `undo()`/`redo()` replay commands from the stack. Each Command implements `{ execute(state), undo(state) }` receiving the full `State` snapshot. Concrete commands: `AddNode`, `DeleteNodes`, `MoveNodes`, `AddEdge`, `DeleteEdge`, `UpdateEdge`, `AddSlot`, `SetActiveSlot`, and an inline anonymous class for `deleteSlot`.
-
-`changeCounter` is bumped on structural changes (nodes/edges added/removed) to trigger `syncFromStore()`. Position-only changes via `moveNodes` do NOT bump it (prevents re-sync loop with Vue Flow during drag).
-
 ### Components
 
-- **`App.vue`** — wraps the app in Naive UI providers (`NMessageProvider`, `NNotificationProvider`, `NDialogProvider`). Defines dark-theme CSS custom properties (`--bg-color`, `--panel-bg`, `--text-main`, etc.) and global Vue Flow style overrides (minimap, controls, edge labels).
+- **`App.vue`** — wraps the app in Naive UI providers (`NMessageProvider`, `NNotificationProvider`, `NDialogProvider`).
 
-- **`Editor.vue`** — the main editor workspace. Contains the Vue Flow graph canvas with fit-view-on-init, snap-to-grid `[20, 20]`, zoom range 0.1–3x. Renders `Background`, `Controls`, `MiniMap` bottom-right. Handles:
-  - **Drag with collision avoidance:** `@node-drag-start` snapshots all node positions. `@node-drag` runs d3 `forceCollide` in real-time, anchoring dragged nodes and directly mutating local `nodes.value` for pushed nodes (bypasses store to avoid history spam). `@node-drag-stop` does a final collision pass, then commits all position changes (dragged + pushed) as a single atomic `store.moveNodes()` for undo/redo.
-  - **Connection:** `@connect` creates edges with lazy slot creation — if the target node has no slots, a default `RecipeSlot` is created automatically. Self-connections are blocked.
-  - **Deletion:** Batches `@nodes-change`/`@edges-change` removals via `setTimeout(0)` to group multi-node deletions into one `DeleteNodesCommand`.
-  - **Edge editing:** `@edge-double-click` prompts for quantity on the selected edge.
-  - **Layout:** `applyLayout()` uses `@dagrejs/dagre` with `rankdir: 'BT'` (bottom-to-top), called once on mount after seeding mock data.
-  - **Keyboard shortcuts:** Ctrl+Z (undo), Ctrl+Y (redo), Ctrl+P (search overlay), Escape (close search).
-  - Provides `isConnecting` ref to child components via `provide`.
+- **`Editor.vue`** — main editor workspace hosting the Vue Flow canvas, controls, and editing interactions.
 
-- **`ItemNode.vue`** — custom Vue Flow node (`type: 'item'`). Renders:
-  - **Source handle** (top, circular) — emits connections. Grows on hover.
-  - **Target handles** (bottom, pill-shaped) — one per `RecipeSlot`, positioned evenly across the node width. `connectable-start="false"` prevents dragging connections out from them.
-  - **Slot labels** — appear on node hover only (`opacity` toggle), positioned below each target handle.
-  - Visual states: `orphan` (dashed border, dimmed), `selected` (colored border with glow), hover (lift + shadow). Color tinting via `--node-color` CSS variable using `color-mix()`.
+- **`ItemNode.vue`** — custom Vue Flow node for items, showing recipe slots, outputs, and node visuals.
 
-- **`DictionaryPanel.vue`** — left sidebar (220px) with Items/Machines tabs. Lists store nodes (with color dot, name, "on canvas" badge) and machines (with speed badge). Double-clicking an item dispatches a `search-fly-to` custom event that Editor listens to for viewport centering. "New Item" / "New Machine" placeholders at the bottom (not yet wired up).
+- **`GroupNode.vue`** — collapsible group node that aggregates child nodes and displays a summary when collapsed.
 
-- **`SearchOverlay.vue`** — Cmd+P search modal. Full-text search across items (by name/tags), machines (by name/tags), and slots (by name/tags). Results grouped by type with keyboard navigation (↑↓), Enter to select and fly-to. Filter tabs: All / Items / Machines / Slots. Closes on Escape or backdrop click.
+- **`NodeDrawer.vue`** — side drawer for viewing and editing the selected node's detailed recipe and settings.
+
+- **`NodePopover.vue`** — compact popover on nodes providing quick info and common actions.
+
+- **`DictionaryPanel.vue`** — left sidebar (220px) listing items and machines with drag-and-drop to the canvas.
+
+- **`SearchOverlay.vue`** — global search / quick-jump overlay (Ctrl+P) for locating nodes and resources.
 
 ### Mock data (`src/data/mock-data.ts`)
 
