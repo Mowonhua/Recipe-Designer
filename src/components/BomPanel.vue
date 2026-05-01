@@ -5,17 +5,17 @@
     placement="right"
     @update:show="onUpdateShow"
   >
-    <n-drawer-content title="BOM Calculator" closable>
+    <n-drawer-content :title="$t('bom.title')" closable>
       <!-- Configuration -->
       <div class="config-block">
         <div class="config-header">
-          <span class="config-label">Target Node</span>
+          <span class="config-label">{{ $t('bom.targetNode') }}</span>
           <span class="config-value">{{ targetNodeName }}</span>
         </div>
 
         <div class="form-row">
           <div class="form-group flex-1">
-            <label>Mode</label>
+            <label>{{ $t('bom.mode') }}</label>
             <n-select
               v-model:value="editMode"
               :options="modeOptions"
@@ -23,7 +23,7 @@
             />
           </div>
           <div class="form-group w-qty">
-            <label>Target</label>
+            <label>{{ $t('bom.target') }}</label>
             <n-input-number
               v-model:value="editTargetQty"
               size="small"
@@ -34,7 +34,7 @@
 
         <div class="form-row" v-if="editMode === 'continuous'">
           <div class="form-group flex-1">
-            <label>Rounding</label>
+            <label>{{ $t('bom.rounding') }}</label>
             <n-select
               v-model:value="editBalancing"
               :options="balancingOptions"
@@ -44,7 +44,7 @@
         </div>
 
         <div class="form-group">
-          <label>Byproducts</label>
+          <label>{{ $t('bom.byproducts') }}</label>
           <n-select
             v-model:value="editByproduct"
             :options="byproductOptions"
@@ -53,7 +53,7 @@
         </div>
 
         <n-button type="primary" size="small" block @click="runCalculation" :loading="bomStore.isCalculating">
-          Calculate
+          {{ $t('bom.calculate') }}
         </n-button>
       </div>
 
@@ -72,7 +72,7 @@
 
       <!-- BOM Tree -->
       <div v-if="result" class="tree-block">
-        <div class="section-label">Production Tree</div>
+        <div class="section-label">{{ $t('bom.productionTree') }}</div>
         <div class="tree-root">
           <BomTreeNodeView
             :node="result.tree"
@@ -85,7 +85,7 @@
 
       <!-- Summary Table -->
       <div v-if="result" class="summary-block">
-        <div class="section-label">Material Summary</div>
+        <div class="section-label">{{ $t('bom.materialSummary') }}</div>
         <BomSummaryTable
           :rows="result.summary"
           :mode="result.request.mode"
@@ -95,8 +95,8 @@
 
       <!-- Empty state -->
       <div v-if="!result && !bomStore.isCalculating" class="empty-state">
-        <p>Select a node and click <strong>Calculate</strong> to run BOM analysis.</p>
-        <p class="hint">Right-click any node → "Calculate BOM"</p>
+        <p>{{ $t('bom.emptyState') }}</p>
+        <p class="hint">{{ $t('bom.emptyStateHint') }}</p>
       </div>
     </n-drawer-content>
   </n-drawer>
@@ -108,12 +108,14 @@ import {
   NDrawer, NDrawerContent,
   NInputNumber, NSelect, NButton,
 } from 'naive-ui';
+import { useI18n } from 'vue-i18n';
 import { useBomStore } from '../store/bom-store';
 import { useStore } from '../store';
 import type { CalculationMode, BalancingStrategy, ByproductStrategy, BomWarning } from '../bom';
 import BomTreeNodeView from './BomTreeNodeView.vue';
 import BomSummaryTable from './BomSummaryTable.vue';
 
+const { t } = useI18n();
 const store = useStore();
 const bomStore = useBomStore();
 
@@ -122,19 +124,19 @@ const editTargetQty = ref(10);
 const editBalancing = ref<BalancingStrategy>('integer-rounding');
 const editByproduct = ref<ByproductStrategy>('ignore-annotate');
 
-const modeOptions = [
-  { label: 'One-Time Production', value: 'one-time' },
-  { label: 'Continuous Production', value: 'continuous' },
-];
-const balancingOptions = [
-  { label: 'Integer Rounding (ceil)', value: 'integer-rounding' },
-  { label: 'Exact Decimal', value: 'exact-decimal' },
-];
-const byproductOptions = [
-  { label: 'Ignore & Annotate', value: 'ignore-annotate' },
-  { label: 'Offset (deduct from demand)', value: 'offset' },
-  { label: 'Independent Output', value: 'independent-output' },
-];
+const modeOptions = computed(() => [
+  { label: t('bom.modeOneTime'), value: 'one-time' as const },
+  { label: t('bom.modeContinuous'), value: 'continuous' as const },
+]);
+const balancingOptions = computed(() => [
+  { label: t('bom.roundingInteger'), value: 'integer-rounding' as const },
+  { label: t('bom.roundingExact'), value: 'exact-decimal' as const },
+]);
+const byproductOptions = computed(() => [
+  { label: t('bom.byproductIgnore'), value: 'ignore-annotate' as const },
+  { label: t('bom.byproductOffset'), value: 'offset' as const },
+  { label: t('bom.byproductIndependent'), value: 'independent-output' as const },
+]);
 
 const targetNodeName = computed(() => {
   const req = bomStore.pendingRequest;

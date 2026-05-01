@@ -3,14 +3,17 @@
     <DictionaryPanel />
     <div ref="canvasWrapRef" class="canvas-wrap">
       <div class="canvas-toolbar">
-        <button type="button" class="toolbar-btn" @click="relayout()" title="Auto-layout all nodes">
-          Relayout
+        <button type="button" class="toolbar-btn" @click="relayout()" :title="$t('editor.relayoutTitle')">
+          {{ $t('editor.relayout') }}
         </button>
-        <button type="button" class="toolbar-btn" @click="store.deleteOrphans()" title="Delete all orphan nodes">
-          Clean Orphans
+        <button type="button" class="toolbar-btn" @click="store.deleteOrphans()" :title="$t('editor.cleanOrphansTitle')">
+          {{ $t('editor.cleanOrphans') }}
         </button>
-        <button type="button" class="toolbar-btn" @click="openBomPanel()" title="BOM Calculator (Ctrl+B)">
-          BOM
+        <button type="button" class="toolbar-btn" @click="openBomPanel()" :title="$t('editor.bomTitle')">
+          {{ $t('editor.bom') }}
+        </button>
+        <button type="button" class="toolbar-btn settings-btn" @click="showSettings = true" :title="$t('editor.settingsTitle')">
+          <Settings :size="14" />
         </button>
       </div>
       <VueFlow
@@ -71,6 +74,21 @@
       />
     </div>
     <SearchOverlay v-if="showSearch" @close="showSearch = false" />
+
+    <!-- Settings Modal -->
+    <n-modal v-model:show="showSettings" preset="card" :title="$t('app.settings')" style="width: 400px;">
+      <div class="settings-form">
+        <div class="form-group">
+          <label>{{ $t('app.language') }}</label>
+          <n-select
+            v-model:value="currentLocale"
+            :options="localeOptions"
+            size="medium"
+            @update:value="onLocaleChange"
+          />
+        </div>
+      </div>
+    </n-modal>
   </div>
 </template>
 
@@ -90,6 +108,7 @@ import { forceSimulation, forceCollide, forceY } from 'd3-force';
 import type { Connection, NodeChange, EdgeChange, EdgeMouseEvent } from '@vue-flow/core';
 import type { FlowEdge, RecipeSlot } from '../store';
 import { useStore } from '../store';
+import { useI18n } from 'vue-i18n';
 import { mockNodes, mockEdges, mockMachines } from '../data/mock-data';
 import ItemNode from './ItemNode.vue';
 import NodePopover from './NodePopover.vue';
@@ -101,7 +120,11 @@ import BomPanel from './BomPanel.vue';
 import ContextMenu from './ContextMenu.vue';
 import type { ContextMenuItem } from './ContextMenu.vue';
 import { useBomStore } from '../store/bom-store';
+import { Settings } from 'lucide-vue-next';
+import { NModal, NSelect } from 'naive-ui';
+import { supportedLocales, setLocale } from '../locales';
 
+const { t } = useI18n();
 const store = useStore();
 const bomStore = useBomStore();
 const { setCenter, viewport, fitView } = useVueFlow();
@@ -685,7 +708,7 @@ function onConnect(connection: Connection) {
     if (targetNode && targetNode.slots.length === 0) {
       const newSlot: RecipeSlot = {
         id: uuidv4(),
-        name: 'Default',
+        name: t('editor.defaultSlotName'),
         time: 1,
         machine_id: store.machines[0]?.id || '',
         tags: [],
@@ -760,7 +783,7 @@ function onEdgeDoubleClick(event: EdgeMouseEvent) {
   const edgeId = event.edge.id as string;
   const storeEdge = store.edges.find(e => e.id === edgeId);
   const currentQty = storeEdge?.quantity || 1;
-  const input = prompt('Edge quantity:', String(currentQty));
+  const input = prompt(t('editor.edgeQuantity'), String(currentQty));
   if (input !== null) {
     const qty = parseInt(input, 10);
     if (!isNaN(qty) && qty > 0) {
@@ -782,6 +805,16 @@ function onSearchFlyTo(e: Event) {
 
 // --- Search overlay ---
 const showSearch = ref(false);
+
+// --- Settings ---
+const showSettings = ref(false);
+const currentLocale = ref(localStorage.getItem('app-locale') || 'en-US');
+const localeOptions = supportedLocales.map(l => ({ label: l.label, value: l.value }));
+
+function onLocaleChange(newLocale: string) {
+  setLocale(newLocale);
+  currentLocale.value = newLocale;
+}
 
 // --- Popover state ---
 const popoverVisible = ref(false);
@@ -846,7 +879,7 @@ const ctxMenuItems = computed<ContextMenuItem[]>(() => {
   return [
     {
       key: 'bom',
-      label: 'Calculate BOM',
+      label: t('editor.calculateBom'),
       shortcut: 'Ctrl+B',
       disabled: !activeSlotId,
       action: () => {
@@ -960,7 +993,7 @@ function createGroupFromSelection() {
     .filter((n: any) => n.selected && n.type === 'item')
     .map((n: any) => n.id as string);
   if (selectedIds.length < 2) return;
-  store.addGroup('New Group', selectedIds);
+  store.addGroup(t('editor.newGroup'), selectedIds);
 }
 
 function disbandSelectedGroup() {
@@ -1063,6 +1096,25 @@ onUnmounted(() => {
 .toolbar-btn:active {
   transform: translate(2px, 2px);
   box-shadow: 2px 2px 0px var(--text-primary);
+}
+.toolbar-btn.settings-btn {
+  padding: 4px 8px;
+}
+
+.settings-form {
+  padding: var(--spacing-md) 0;
+}
+.settings-form .form-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+.settings-form label {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 900;
+  text-transform: uppercase;
+  color: var(--text-primary);
 }
 </style>
 

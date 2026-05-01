@@ -21,14 +21,14 @@
             </span>
             <div>
               <div class="node-name">{{ node.name }}</div>
-              <div class="node-tags">{{ node.tags.join(' · ') || 'no tags' }}</div>
+              <div class="node-tags">{{ node.tags.join(' · ') || $t('popover.noTags') }}</div>
             </div>
           </div>
-          <button type="button" class="details-btn" @click="openDrawer">Details →</button>
+          <button type="button" class="details-btn" @click="openDrawer">{{ $t('popover.details') }}</button>
         </div>
 
         <!-- Active Recipe / Slots -->
-        <div class="section-label">Active Recipe</div>
+        <div class="section-label">{{ $t('popover.activeRecipe') }}</div>
         <div class="slot-list">
           <div
             v-for="slot in node.slots"
@@ -38,33 +38,33 @@
           >
             <div class="slot-info">
               <div class="slot-name">{{ slot.name }}</div>
-              <div class="slot-meta">{{ slot.time }}s · ×{{ slot.primary_output_quantity }} · {{ machineName(slot.machine_id) }}</div>
+              <div class="slot-meta">{{ slot.time }}{{ $t('popover.timeUnit') }} · ×{{ slot.primary_output_quantity }} · {{ machineName(slot.machine_id) }}</div>
             </div>
             <div v-if="slot.id === node.active_slot_id" class="active-dot"></div>
           </div>
-          <div v-if="node.slots.length === 0" class="no-data">No recipes yet. Connect an edge to create one.</div>
+          <div v-if="node.slots.length === 0" class="no-data">{{ $t('popover.noRecipes') }}</div>
         </div>
 
         <!-- Inputs -->
-        <div class="section-label">Inputs</div>
+        <div class="section-label">{{ $t('popover.inputs') }}</div>
         <div class="io-list">
           <div v-for="input in activeInputs" :key="input.id" class="io-row">
             <span class="io-dot" :style="{ background: input.color }"></span>
             <span class="io-name">{{ input.name }}</span>
             <span class="io-qty">×{{ input.quantity }}</span>
           </div>
-          <div v-if="activeInputs.length === 0" class="no-data">No inputs</div>
+          <div v-if="activeInputs.length === 0" class="no-data">{{ $t('popover.noInputs') }}</div>
         </div>
 
         <!-- Byproducts -->
-        <div class="section-label">Byproducts</div>
+        <div class="section-label">{{ $t('popover.byproducts') }}</div>
         <div class="io-list">
           <div v-for="bp in activeByproducts" :key="bp.id" class="io-row byproduct">
             <span class="io-dot" :style="{ background: bp.color }"></span>
             <span class="io-name">{{ bp.name }}</span>
             <span class="io-qty">×{{ bp.quantity }}</span>
           </div>
-          <div v-if="activeByproducts.length === 0" class="no-data">No byproducts</div>
+          <div v-if="activeByproducts.length === 0" class="no-data">{{ $t('popover.noByproducts') }}</div>
         </div>
       </div>
     </div>
@@ -73,8 +73,11 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useStore } from '../store';
 import type { ItemNode } from '../store';
+
+const { t } = useI18n();
 
 const props = defineProps<{
   visible: boolean;
@@ -104,7 +107,7 @@ function switchSlot(slotId: string) { emit('switchSlot', slotId); }
 const iconIsImage = computed(() => props.node?.icon?.startsWith('data:image/') ?? false);
 
 function machineName(machineId: string): string {
-  return store.machines.find(m => m.id === machineId)?.name || 'Unknown';
+  return store.machines.find(m => m.id === machineId)?.name || t('popover.unknown');
 }
 
 const activeInputs = computed(() => {
@@ -118,7 +121,7 @@ const activeInputs = computed(() => {
       const source = store.nodes.find(n => n.id === e.source);
       return {
         id: e.id,
-        name: source?.name || 'Unknown',
+        name: source?.name || t('popover.unknown'),
         color: source?.color || '#64748b',
         quantity: e.quantity,
       };
@@ -134,7 +137,7 @@ const activeByproducts = computed(() => {
     const item = store.nodes.find(n => n.id === so.item_id);
     return {
       id: so.item_id,
-      name: item?.name || 'Unknown',
+      name: item?.name || t('popover.unknown'),
       color: item?.color || '#3b82f6',
       quantity: so.quantity,
     };

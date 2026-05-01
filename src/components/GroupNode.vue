@@ -15,35 +15,35 @@
         ref="nameInput"
       />
       <span v-else class="group-name" @dblclick.stop="startEditName">{{ data.name }}</span>
-      <span class="group-count">({{ data.children.length }} items)</span>
+      <span class="group-count">({{ data.children.length }} {{ $t('group.items') }})</span>
       <button type="button" class="group-toggle" @click.stop="toggleCollapse">
-        {{ data.collapsed ? '↗ Expand' : '↙ Collapse' }}
+        {{ data.collapsed ? $t('group.expand') : $t('group.collapse') }}
       </button>
     </div>
 
     <!-- Collapsed summary -->
     <div v-if="data.collapsed" class="group-summary">
       <div class="summary-col">
-        <div class="summary-label">Inputs</div>
+        <div class="summary-label">{{ $t('group.inputs') }}</div>
         <div v-for="(io, i) in (data.summary_recipe?.inputs || [])" :key="'in-' + i" class="summary-item">
           <span>{{ getItemName(io.item_id) }}</span>
           <span class="summary-qty">×{{ io.quantity }}</span>
         </div>
-        <div v-if="!data.summary_recipe?.inputs?.length" class="summary-empty">None</div>
+        <div v-if="!data.summary_recipe?.inputs?.length" class="summary-empty">{{ $t('group.none') }}</div>
       </div>
       <div class="summary-col">
-        <div class="summary-label">Outputs</div>
+        <div class="summary-label">{{ $t('group.outputs') }}</div>
         <div v-for="(io, i) in (data.summary_recipe?.outputs || [])" :key="'out-' + i" class="summary-item">
           <span>{{ getItemName(io.item_id) }}</span>
           <span class="summary-qty">×{{ io.quantity }}</span>
         </div>
-        <div v-if="!data.summary_recipe?.outputs?.length" class="summary-empty">None</div>
+        <div v-if="!data.summary_recipe?.outputs?.length" class="summary-empty">{{ $t('group.none') }}</div>
       </div>
     </div>
 
     <!-- Footer hint -->
     <div class="group-footer">
-      <span class="hint">Ctrl+Shift+G to disband</span>
+      <span class="hint">{{ $t('group.disbandHint') }}</span>
     </div>
   </div>
 </template>
@@ -51,7 +51,10 @@
 <script setup lang="ts">
 import { ref, onMounted, nextTick } from 'vue';
 import { Handle, Position } from '@vue-flow/core';
+import { useI18n } from 'vue-i18n';
 import { useStore } from '../store';
+
+const { t } = useI18n();
 
 const props = defineProps<{
   id: string;
@@ -107,7 +110,7 @@ function toggleCollapse() {
 }
 
 function getItemName(itemId: string): string {
-  return store.nodes.find(n => n.id === itemId)?.name || 'Unknown';
+  return store.nodes.find(n => n.id === itemId)?.name || t('group.unknown');
 }
 </script>
 

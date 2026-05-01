@@ -1,8 +1,8 @@
 ﻿<template>
-  <n-config-provider :theme="isDarkTheme ? darkTheme : null">
+  <n-config-provider :theme="isDarkTheme ? darkTheme : null" :locale="naiveLocale">
     <div :class="['theme-wrapper', isDarkTheme ? 'dark' : 'light']" :data-theme="isDarkTheme ? 'dark' : 'light'">
       <div class="theme-toggle" @click="toggleTheme">
-        {{ isDarkTheme ? 'Dark Mode' : 'Light Mode' }}
+        {{ isDarkTheme ? $t('app.darkMode') : $t('app.lightMode') }}
       </div>
       <n-message-provider>
         <n-notification-provider>
@@ -16,11 +16,23 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watchEffect, provide } from 'vue';
-import { NMessageProvider, NNotificationProvider, NDialogProvider, NConfigProvider, darkTheme } from 'naive-ui';
+import { ref, watchEffect, provide, computed } from 'vue';
+import { NMessageProvider, NNotificationProvider, NDialogProvider, NConfigProvider, darkTheme, zhCN, enUS, dateZhCN, dateEnUS } from 'naive-ui';
+import { useI18n } from 'vue-i18n';
 import Editor from './components/Editor.vue';
 
+const { locale } = useI18n();
 const isDarkTheme = ref(true);
+
+const naiveLocale = computed(() => {
+  if (locale.value === 'zh-CN') return zhCN;
+  return enUS;
+});
+
+const naiveDateLocale = computed(() => {
+  if (locale.value === 'zh-CN') return dateZhCN;
+  return dateEnUS;
+});
 
 const toggleTheme = () => {
   isDarkTheme.value = !isDarkTheme.value;
@@ -28,6 +40,8 @@ const toggleTheme = () => {
 
 provide('isDarkTheme', isDarkTheme);
 provide('toggleTheme', toggleTheme);
+provide('naiveLocale', naiveLocale);
+provide('naiveDateLocale', naiveDateLocale);
 
 watchEffect(() => {
   if (isDarkTheme.value) {

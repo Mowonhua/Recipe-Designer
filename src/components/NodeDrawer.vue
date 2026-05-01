@@ -5,23 +5,23 @@
     placement="right"
     @update:show="onUpdateShow"
   >
-    <n-drawer-content :title="node?.name || 'Node Details'" closable>
+    <n-drawer-content :title="node?.name || $t('drawer.title')" closable>
       <n-tabs v-model:value="activeTab" type="line" animated>
         <!-- Properties Tab -->
-        <n-tab-pane name="properties" tab="Properties">
+        <n-tab-pane name="properties" :tab="$t('drawer.tabProperties')">
           <div class="form-group">
-            <label>Name</label>
+            <label>{{ $t('drawer.name') }}</label>
             <n-input v-model:value="editName" size="small" />
           </div>
           <div class="form-group">
-            <label>Icon</label>
+            <label>{{ $t('drawer.icon') }}</label>
             <div class="icon-editor">
               <div class="icon-preview">
                 <img v-if="isEditIconImage" :src="editIcon" class="preview-img" />
                 <span v-else class="preview-text">{{ editIcon || '—' }}</span>
               </div>
-              <n-input v-model:value="editIcon" size="small" placeholder="Emoji, text, or image" class="icon-input" />
-              <n-button size="tiny" @click="triggerUpload" class="upload-btn" title="Upload image">
+              <n-input v-model:value="editIcon" size="small" :placeholder="$t('drawer.iconPlaceholder')" class="icon-input" />
+              <n-button size="tiny" @click="triggerUpload" class="upload-btn" :title="$t('drawer.uploadImage')">
                 <ImageUp :size="14" />
               </n-button>
               <input
@@ -31,11 +31,11 @@
                 hidden
                 @change="onIconFileChange"
               />
-              <n-button v-if="editIcon" size="tiny" text @click="editIcon = ''" class="clear-btn" title="Clear">×</n-button>
+              <n-button v-if="editIcon" size="tiny" text @click="editIcon = ''" class="clear-btn" :title="$t('drawer.clear')">×</n-button>
             </div>
           </div>
           <div class="form-group">
-            <label>Color</label>
+            <label>{{ $t('drawer.color') }}</label>
             <div class="color-grid">
               <div
                 v-for="c in colorPresets"
@@ -47,7 +47,7 @@
             </div>
           </div>
           <div class="form-group">
-            <label>Tags</label>
+            <label>{{ $t('drawer.tags') }}</label>
             <div class="tags-wrap">
               <span v-for="(tag, i) in editTags" :key="i" class="tag-pill">
                 {{ tag }}
@@ -56,47 +56,47 @@
               <n-input
                 v-model:value="newTag"
                 size="tiny"
-                placeholder="+ add tag"
+                :placeholder="$t('drawer.addTag')"
                 class="tag-input-inline"
                 @keydown.enter.prevent="addTag"
               />
             </div>
           </div>
           <div class="form-group">
-            <label>Raw Material</label>
+            <label>{{ $t('drawer.rawMaterial') }}</label>
             <n-switch v-model:value="editIsRaw" />
           </div>
           <n-button type="primary" size="small" @click="saveProperties" block>
-            Save Properties
+            {{ $t('drawer.saveProperties') }}
           </n-button>
         </n-tab-pane>
 
         <!-- Slots Tab -->
-        <n-tab-pane name="slots" tab="Slots">
+        <n-tab-pane name="slots" :tab="$t('drawer.tabSlots')">
           <div v-for="slot in (node?.slots || [])" :key="slot.id" class="slot-card">
             <div class="slot-header">
               <span :class="['slot-status', { active: slot.id === node?.active_slot_id }]">
-                {{ slot.id === node?.active_slot_id ? '● Active' : '○ Inactive' }}
+                {{ slot.id === node?.active_slot_id ? $t('drawer.active') : $t('drawer.inactive') }}
               </span>
-              <n-button text size="tiny" type="error" @click="deleteSlot(slot.id)">Delete</n-button>
+              <n-button text size="tiny" type="error" @click="deleteSlot(slot.id)">{{ $t('drawer.deleteSlot') }}</n-button>
             </div>
             <div class="form-row">
               <div class="form-group flex-1">
-                <label>Name</label>
+                <label>{{ $t('drawer.name') }}</label>
                 <n-input v-model:value="editSlots[slot.id].name" size="small" />
               </div>
               <div class="form-group w-70">
-                <label>Time (s)</label>
+                <label>{{ $t('drawer.time') }}</label>
                 <n-input-number v-model:value="editSlots[slot.id].time" size="small" :min="0.1" :step="0.1" />
               </div>
             </div>
             <div class="form-row">
               <div class="form-group flex-1">
-                <label>Quantity</label>
+                <label>{{ $t('drawer.quantity') }}</label>
                 <n-input-number v-model:value="editSlots[slot.id].primary_output_quantity" size="small" :min="1" />
               </div>
               <div class="form-group flex-1">
-                <label>Machine</label>
+                <label>{{ $t('drawer.machine') }}</label>
                 <n-select
                   v-model:value="editSlots[slot.id].machine_id"
                   :options="machineOptions"
@@ -105,7 +105,7 @@
               </div>
             </div>
             <div class="form-group">
-              <label>Tags</label>
+              <label>{{ $t('drawer.tags') }}</label>
               <div class="tags-wrap">
                 <span v-for="(tag, i) in (editSlots[slot.id].tags || [])" :key="i" class="tag-pill small">
                   {{ tag }} <span class="tag-remove" @click="removeSlotTag(slot.id, i)">×</span>
@@ -113,14 +113,14 @@
                 <input
                   v-model="slotTagInputs[slot.id]"
                   class="tag-input-native"
-                  placeholder="+ add"
+                  :placeholder="$t('drawer.addSlotTag')"
                   @keydown.enter.prevent="addSlotTag(slot.id)"
                 />
               </div>
             </div>
             <div class="form-row">
               <div class="form-group flex-1">
-                <label>Catalyst Mode</label>
+                <label>{{ $t('drawer.catalystMode') }}</label>
                 <n-select
                   v-model:value="editSlots[slot.id].catalyst_mode"
                   :options="catalystModeOptions"
@@ -128,15 +128,15 @@
                 />
               </div>
             </div>
-            <n-button size="tiny" @click="saveSlot(slot.id)">Save Slot</n-button>
+            <n-button size="tiny" @click="saveSlot(slot.id)">{{ $t('drawer.saveSlot') }}</n-button>
           </div>
           <n-button dashed size="small" @click="addNewSlot" block style="margin-top: 8px;">
-            + Add Slot
+            {{ $t('drawer.addSlot') }}
           </n-button>
         </n-tab-pane>
 
         <!-- Inputs Tab -->
-        <n-tab-pane name="inputs" tab="Inputs">
+        <n-tab-pane name="inputs" :tab="$t('drawer.tabInputs')">
           <div v-for="slot in (node?.slots || [])" :key="'in-' + slot.id" class="input-group">
             <div class="group-label">{{ slot.name }}</div>
             <div v-for="edge in getSlotEdges(slot.id)" :key="edge.id" class="edge-row">
@@ -150,27 +150,27 @@
               />
               <n-button text size="tiny" type="error" @click="deleteEdgeById(edge.id)">×</n-button>
             </div>
-            <div v-if="getSlotEdges(slot.id).length === 0" class="no-data">No input edges</div>
+            <div v-if="getSlotEdges(slot.id).length === 0" class="no-data">{{ $t('drawer.noInputEdges') }}</div>
           </div>
         </n-tab-pane>
 
         <!-- Relations Tab -->
-        <n-tab-pane name="relations" tab="Relations">
-          <div class="section-label">Downstream (Consumed by)</div>
+        <n-tab-pane name="relations" :tab="$t('drawer.tabRelations')">
+          <div class="section-label">{{ $t('drawer.downstream') }}</div>
           <div v-for="rel in downstream" :key="rel.id" class="relation-row" @click="flyTo(rel.id)">
             <span class="io-dot" :style="{ background: rel.color }"></span>
-            <span class="relation-name">{{ rel.name }}<template v-if="rel.type === 'byproduct'"> (byproduct)</template></span>
+            <span class="relation-name">{{ rel.name }}<template v-if="rel.type === 'byproduct'"> {{ $t('drawer.byproduct') }}</template></span>
             <span class="relation-qty">×{{ rel.quantity }}</span>
           </div>
-          <div v-if="downstream.length === 0" class="no-data">No downstream consumers</div>
+          <div v-if="downstream.length === 0" class="no-data">{{ $t('drawer.noDownstream') }}</div>
 
-          <div class="section-label" style="margin-top: 16px;">Upstream (Produced by)</div>
+          <div class="section-label" style="margin-top: 16px;">{{ $t('drawer.upstream') }}</div>
           <div v-for="rel in upstream" :key="rel.id" class="relation-row" @click="flyTo(rel.id)">
             <span class="io-dot" :style="{ background: rel.color }"></span>
-            <span class="relation-name">{{ rel.name }}<template v-if="rel.type === 'byproduct'"> (byproduct)</template></span>
+            <span class="relation-name">{{ rel.name }}<template v-if="rel.type === 'byproduct'"> {{ $t('drawer.byproduct') }}</template></span>
             <span class="relation-qty">×{{ rel.quantity }}</span>
           </div>
-          <div v-if="upstream.length === 0" class="no-data">No upstream producers</div>
+          <div v-if="upstream.length === 0" class="no-data">{{ $t('drawer.noUpstream') }}</div>
         </n-tab-pane>
       </n-tabs>
     </n-drawer-content>
@@ -185,8 +185,11 @@ import {
 } from 'naive-ui';
 import { ImageUp } from 'lucide-vue-next';
 import { v4 as uuidv4 } from 'uuid';
+import { useI18n } from 'vue-i18n';
 import { useStore } from '../store';
 import type { ItemNode, RecipeSlot, FlowEdge } from '../store';
+
+const { t } = useI18n();
 
 const props = defineProps<{
   visible: boolean;
@@ -219,7 +222,7 @@ function onIconFileChange(e: Event) {
   const file = input.files?.[0];
   if (!file) return;
   if (file.size > 256 * 1024) {
-    alert('Image too large. Please use an image under 256KB.');
+    alert(t('drawer.imageTooLarge'));
     input.value = '';
     return;
   }
@@ -305,11 +308,11 @@ watch(() => props.node?.slots, (slots) => {
 const machineOptions = computed(() =>
   store.machines.map(m => ({ label: m.name, value: m.id }))
 );
-const catalystModeOptions = [
-  { label: 'None', value: 'none' },
-  { label: 'Optional', value: 'optional' },
-  { label: 'Required', value: 'required' },
-];
+const catalystModeOptions = computed(() => [
+  { label: t('drawer.catalystNone'), value: 'none' as const },
+  { label: t('drawer.catalystOptional'), value: 'optional' as const },
+  { label: t('drawer.catalystRequired'), value: 'required' as const },
+]);
 
 function addSlotTag(slotId: string) {
   const tag = slotTagInputs[slotId]?.trim();
@@ -335,7 +338,7 @@ function addNewSlot() {
   if (!props.node) return;
   const slot: RecipeSlot = {
     id: uuidv4(),
-    name: 'New Recipe',
+    name: t('drawer.newRecipe'),
     time: 1,
     machine_id: store.machines[0]?.id || '',
     tags: [],
@@ -351,7 +354,7 @@ function addNewSlot() {
 
 function deleteSlot(slotId: string) {
   if (!props.node) return;
-  if (!confirm('Delete this recipe slot and all its connected edges?')) return;
+  if (!confirm(t('drawer.deleteSlotConfirm'))) return;
   store.deleteSlot(props.node.id, slotId);
 }
 
@@ -370,7 +373,7 @@ function getSlotEdges(slotId: string): FlowEdge[] {
   return store.edges.filter(e => e.target === props.node?.id && e.target_slot_id === slotId && e.edge_type === 'input');
 }
 function getNodeName(nodeId: string): string {
-  return store.nodes.find(n => n.id === nodeId)?.name || 'Unknown';
+  return store.nodes.find(n => n.id === nodeId)?.name || t('drawer.unknown');
 }
 function updateEdgeQty(edgeId: string, qty: number) {
   store.updateEdge(edgeId, { quantity: qty });

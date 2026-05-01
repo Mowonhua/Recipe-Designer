@@ -1,6 +1,6 @@
 <template>
   <aside class="dictionary-panel">
-    <header class="panel-header">Dictionary</header>
+    <header class="panel-header">{{ $t('dict.title') }}</header>
 
     <!-- Search -->
     <div class="search-box">
@@ -8,7 +8,7 @@
         v-model="searchQuery"
         type="text"
         class="search-input"
-        placeholder="Filter..."
+        :placeholder="$t('dict.filterPlaceholder')"
         @keydown.escape="searchQuery = ''"
       />
     </div>
@@ -18,11 +18,11 @@
       <button
         :class="['tab', { active: activeTab === 'items' }]"
         @click="activeTab = 'items'"
-      >Items</button>
+      >{{ $t('dict.tabItems') }}</button>
       <button
         :class="['tab', { active: activeTab === 'machines' }]"
         @click="activeTab = 'machines'"
-      >Machines</button>
+      >{{ $t('dict.tabMachines') }}</button>
     </nav>
 
     <!-- List -->
@@ -41,7 +41,7 @@
         >
           <span class="dot" :style="{ background: node.color || 'var(--accent-blue)' }"></span>
           <span class="item-name">{{ node.name }}</span>
-          <span v-if="store.isNodeOnCanvas(node.id)" class="on-canvas-badge">on canvas</span>
+          <span v-if="store.isNodeOnCanvas(node.id)" class="on-canvas-badge">{{ $t('dict.onCanvas') }}</span>
         </div>
 
         <!-- Inline new item form -->
@@ -51,13 +51,13 @@
             v-model="newItemName"
             type="text"
             class="form-input"
-            placeholder="Item name"
+            :placeholder="$t('dict.itemNamePlaceholder')"
             @keydown.enter="createItem"
             @keydown.escape="cancelAddItem"
           />
           <div class="form-actions">
-            <button class="form-btn confirm" @click="createItem" :disabled="!newItemName.trim()">Add</button>
-            <button class="form-btn cancel" @click="cancelAddItem">Cancel</button>
+            <button class="form-btn confirm" @click="createItem" :disabled="!newItemName.trim()">{{ $t('dict.add') }}</button>
+            <button class="form-btn cancel" @click="cancelAddItem">{{ $t('dict.cancel') }}</button>
           </div>
         </div>
 
@@ -68,7 +68,7 @@
           @click="startAddItem"
         >
           <span class="add-icon">+</span>
-          <span class="item-name">New Item</span>
+          <span class="item-name">{{ $t('dict.newItem') }}</span>
         </div>
       </template>
 
@@ -92,12 +92,12 @@
             v-model="newMachineName"
             type="text"
             class="form-input"
-            placeholder="Machine name"
+            :placeholder="$t('dict.machineNamePlaceholder')"
             @keydown.enter="createMachine"
             @keydown.escape="cancelAddMachine"
           />
           <div class="form-row">
-            <label class="speed-label">Speed</label>
+            <label class="speed-label">{{ $t('dict.speed') }}</label>
             <input
               v-model.number="newMachineSpeed"
               type="number"
@@ -109,8 +109,8 @@
             />
           </div>
           <div class="form-actions">
-            <button class="form-btn confirm" @click="createMachine" :disabled="!newMachineName.trim()">Add</button>
-            <button class="form-btn cancel" @click="cancelAddMachine">Cancel</button>
+            <button class="form-btn confirm" @click="createMachine" :disabled="!newMachineName.trim()">{{ $t('dict.add') }}</button>
+            <button class="form-btn cancel" @click="cancelAddMachine">{{ $t('dict.cancel') }}</button>
           </div>
         </div>
 
@@ -121,7 +121,7 @@
           @click="startAddMachine"
         >
           <span class="add-icon">+</span>
-          <span class="item-name">New Machine</span>
+          <span class="item-name">{{ $t('dict.newMachine') }}</span>
         </div>
       </template>
     </section>
@@ -134,8 +134,8 @@
         :style="{ left: contextMenu.x + 'px', top: contextMenu.y + 'px' }"
         @click.stop
       >
-        <button class="ctx-item" @click="contextMenuEdit">Edit</button>
-        <button class="ctx-item danger" @click="contextMenuDelete">Delete</button>
+        <button class="ctx-item" @click="contextMenuEdit">{{ $t('dict.edit') }}</button>
+        <button class="ctx-item danger" @click="contextMenuDelete">{{ $t('dict.delete') }}</button>
       </div>
     </Teleport>
 
@@ -151,8 +151,10 @@
 <script setup lang="ts">
 import { ref, computed, nextTick, onMounted, onUnmounted } from 'vue';
 import { v4 as uuidv4 } from 'uuid';
+import { useI18n } from 'vue-i18n';
 import { useStore, type ItemNode, type Machine } from '../store';
 
+const { t } = useI18n();
 const store = useStore();
 
 // --- Tabs ---
@@ -200,7 +202,7 @@ function createItem() {
 function editItemName(nodeId: string) {
   const node = store.nodes.find(n => n.id === nodeId);
   if (!node) return;
-  const newName = prompt('Edit item name:', node.name);
+  const newName = prompt(t('dict.editItemName'), node.name);
   if (newName !== null && newName.trim() !== '' && newName.trim() !== node.name) {
     store.updateItem(nodeId, { name: newName.trim() });
   }
@@ -209,7 +211,7 @@ function editItemName(nodeId: string) {
 function deleteItem(nodeId: string) {
   const node = store.nodes.find(n => n.id === nodeId);
   if (!node) return;
-  if (confirm(`Delete "${node.name}"? This will also remove its connections.`)) {
+  if (confirm(t('dict.deleteItemConfirm', { name: node.name }))) {
     store.deleteNodes([nodeId]);
   }
 }
@@ -252,7 +254,7 @@ function createMachine() {
 function editMachineName(machineId: string) {
   const machine = store.machines.find(m => m.id === machineId);
   if (!machine) return;
-  const newName = prompt('Edit machine name:', machine.name);
+  const newName = prompt(t('dict.editMachineName'), machine.name);
   if (newName !== null && newName.trim() !== '' && newName.trim() !== machine.name) {
     store.updateMachine(machineId, { name: newName.trim() });
   }
@@ -261,7 +263,7 @@ function editMachineName(machineId: string) {
 function deleteMachineById(machineId: string) {
   const machine = store.machines.find(m => m.id === machineId);
   if (!machine) return;
-  if (confirm(`Delete machine "${machine.name}"?`)) {
+  if (confirm(t('dict.deleteMachineConfirm', { name: machine.name }))) {
     store.deleteMachine(machineId);
   }
 }

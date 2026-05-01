@@ -1,5 +1,10 @@
 // src/store/validation.ts — Pure topology validation functions
 import type { State, ItemNode, Machine } from './index';
+import i18n from '../locales';
+
+function t(key: string, params: Record<string, unknown> = {}): string {
+  return i18n.global.t(key, params) as string;
+}
 
 export interface ValidationError {
   type: 'reference' | 'tag_mismatch' | 'cycle' | 'orphan'; // 'orphan' reserved for future orphan validation reporting
@@ -39,7 +44,7 @@ export function checkReferenceIntegrity(state: State): ValidationError[] {
         type: 'reference',
         severity: 'error',
         nodeIds: [edge.source, edge.target],
-        message: `Edge "${edge.id}" targets node "${edge.target}" which does not exist.`,
+        message: t('validation.edgeTargetMissing', { edgeId: edge.id, targetId: edge.target }),
       });
       continue;
     }
@@ -52,7 +57,7 @@ export function checkReferenceIntegrity(state: State): ValidationError[] {
         type: 'reference',
         severity: 'error',
         nodeIds: [edge.target],
-        message: `Edge "${edge.id}" references slot "${edge.target_slot_id}" on node "${edge.target}", but that slot does not exist.`,
+        message: t('validation.slotRefMissing', { edgeId: edge.id, slotId: edge.target_slot_id, targetId: edge.target }),
       });
     }
   }
@@ -65,7 +70,7 @@ export function checkReferenceIntegrity(state: State): ValidationError[] {
           type: 'reference',
           severity: 'error',
           nodeIds: [node.id],
-          message: `Slot "${slot.name}" (${slot.id}) on node "${node.name}" references machine "${slot.machine_id}" which does not exist.`,
+          message: t('validation.machineRefMissing', { slotName: slot.name, slotId: slot.id, nodeName: node.name, machineId: slot.machine_id }),
         });
       }
 
@@ -76,7 +81,7 @@ export function checkReferenceIntegrity(state: State): ValidationError[] {
             type: 'reference',
             severity: 'error',
             nodeIds: [node.id],
-            message: `Slot "${slot.name}" (${slot.id}) on node "${node.name}" has secondary output referencing item "${so.item_id}" which does not exist.`,
+            message: t('validation.secondaryOutputRefMissing', { slotName: slot.name, slotId: slot.id, nodeName: node.name, itemId: so.item_id }),
           });
         }
       }
@@ -87,7 +92,7 @@ export function checkReferenceIntegrity(state: State): ValidationError[] {
           type: 'reference',
           severity: 'error',
           nodeIds: [node.id],
-          message: `Slot "${slot.name}" (${slot.id}) on node "${node.name}" has catalyst referencing item "${slot.catalyst.item_id}" which does not exist.`,
+          message: t('validation.catalystRefMissing', { slotName: slot.name, slotId: slot.id, nodeName: node.name, itemId: slot.catalyst.item_id }),
         });
       }
     }
@@ -119,7 +124,7 @@ export function checkTagMatches(state: State): ValidationError[] {
           type: 'tag_mismatch',
           severity: 'warning',
           nodeIds: [node.id],
-          message: `Slot "${slot.name}" on node "${node.name}" has tags [${slot.tags.join(', ')}] which do not match machine "${machine.name}" allowed tags [${machine.allowed_recipe_tags.join(', ')}].`,
+          message: t('validation.tagMismatch', { slotName: slot.name, nodeName: node.name, slotTags: slot.tags.join(', '), machineName: machine.name, machineTags: machine.allowed_recipe_tags.join(', ') }),
         });
       }
     }

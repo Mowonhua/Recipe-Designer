@@ -8,7 +8,7 @@
           ref="inputRef"
           v-model="query"
           class="search-input"
-          placeholder="Search nodes, slots, machines..."
+          :placeholder="$t('search.placeholder')"
           @keydown="onKeydown"
         />
         <kbd class="shortcut-hint">ESC</kbd>
@@ -44,15 +44,15 @@
           </div>
         </template>
         <div v-else class="no-results">
-          {{ query ? 'No results' : 'Type to search...' }}
+          {{ query ? $t('search.noResults') : $t('search.typeToSearch') }}
         </div>
       </div>
 
       <!-- Footer -->
       <div class="footer">
-        <span>↑↓ Navigate</span>
-        <span>Enter Select & Fly to</span>
-        <span>Esc Close</span>
+        <span>{{ $t('search.footerNav') }}</span>
+        <span>{{ $t('search.footerEnter') }}</span>
+        <span>{{ $t('search.footerEsc') }}</span>
       </div>
     </div>
   </div>
@@ -60,7 +60,10 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, nextTick } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useStore } from '../store';
+
+const { t } = useI18n();
 
 const emit = defineEmits<{
   close: [];
@@ -81,12 +84,12 @@ const activeTab = ref('all');
 const selectedIndex = ref(0);
 const inputRef = ref<HTMLInputElement>();
 
-const tabs = [
-  { key: 'all', label: 'All' },
-  { key: 'item', label: 'Items' },
-  { key: 'machine', label: 'Machines' },
-  { key: 'slot', label: 'Slots' },
-];
+const tabs = computed(() => [
+  { key: 'all', label: t('search.tabAll') },
+  { key: 'item', label: t('search.tabItems') },
+  { key: 'machine', label: t('search.tabMachines') },
+  { key: 'slot', label: t('search.tabSlots') },
+]);
 
 const allResults = computed<SearchResult[]>(() => {
   const q = query.value.toLowerCase().trim();
@@ -95,7 +98,7 @@ const allResults = computed<SearchResult[]>(() => {
   if (activeTab.value === 'all' || activeTab.value === 'item') {
     for (const node of store.nodes) {
       if (!q || node.name.toLowerCase().includes(q) || node.tags.some(t => t.toLowerCase().includes(q))) {
-        results.push({ type: 'Item', id: node.id, name: node.name, color: node.color, nodeId: node.id });
+        results.push({ type: t('search.typeItem'), id: node.id, name: node.name, color: node.color, nodeId: node.id });
       }
     }
   }
@@ -103,7 +106,7 @@ const allResults = computed<SearchResult[]>(() => {
   if (activeTab.value === 'all' || activeTab.value === 'machine') {
     for (const machine of store.machines) {
       if (!q || machine.name.toLowerCase().includes(q) || machine.tags.some(t => t.toLowerCase().includes(q))) {
-        results.push({ type: 'Machine', id: machine.id, name: machine.name, color: '#64748b' });
+        results.push({ type: t('search.typeMachine'), id: machine.id, name: machine.name, color: '#64748b' });
       }
     }
   }
@@ -113,7 +116,7 @@ const allResults = computed<SearchResult[]>(() => {
       for (const slot of node.slots) {
         if (!q || slot.name.toLowerCase().includes(q) || slot.tags.some(t => t.toLowerCase().includes(q))) {
           results.push({
-            type: 'Slot',
+            type: t('search.typeSlot'),
             id: slot.id,
             name: slot.name,
             subtitle: node.name,

@@ -3,6 +3,11 @@ import { defineStore } from 'pinia';
 import { calculateBom, BomCache } from '../bom';
 import type { BomRequest, BomResult } from '../bom';
 import { useStore } from './index';
+import i18n from '../locales';
+
+function t(key: string, params: Record<string, unknown> = {}): string {
+  return i18n.global.t(key, params) as string;
+}
 
 export const useBomStore = defineStore('bom', () => {
   const store = useStore();
@@ -38,7 +43,7 @@ export const useBomStore = defineStore('bom', () => {
           nodeName: node?.name || nodeId,
           nodeColor: node?.color || '#64748b',
           slotId: '',
-          slotName: '(no recipe)',
+          slotName: t('bom.noRecipe'),
           depth: 0,
           targetQuantity: 0,
           inputs: [],
@@ -50,7 +55,7 @@ export const useBomStore = defineStore('bom', () => {
           isCycleDetected: false,
         },
         summary: [],
-        warnings: [{ type: 'no_active_slot', nodeId, message: node?.is_raw_material === true ? `"${node.name}" is a raw material — no production recipe to calculate.` : `"${node?.name || nodeId}" has no active recipe slot.` }],
+        warnings: [{ type: 'no_active_slot', nodeId, message: node?.is_raw_material === true ? t('bomWarnings.rawMaterial', { nodeName: node.name }) : t('bomWarnings.noActiveSlot', { nodeName: node?.name || nodeId }) }],
         computedAt: Date.now(),
       };
       return;

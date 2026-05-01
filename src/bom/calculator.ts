@@ -8,6 +8,11 @@ import {
   collectByproducts, createByproductAccumulator,
   applyOffsetStrategy, type ByproductAccumulator,
 } from './byproduct';
+import i18n from '../locales';
+
+function t(key: string, params: Record<string, unknown> = {}): string {
+  return i18n.global.t(key, params) as string;
+}
 
 const MAX_DEPTH = 50;
 
@@ -50,12 +55,12 @@ function computeOneTime(
   const visitKey = `${node.id}:${slot.id}`;
 
   if (depth > MAX_DEPTH) {
-    warnings.push({ type: 'cycle', nodeId: node.id, message: `Max depth (${MAX_DEPTH}) exceeded at "${node.name}"` });
+    warnings.push({ type: 'cycle', nodeId: node.id, message: t('bomWarnings.maxDepth', { maxDepth: MAX_DEPTH, nodeName: node.name }) });
     return makeCycleNode(node, slot, depth);
   }
 
   if (visited.has(visitKey)) {
-    warnings.push({ type: 'cycle', nodeId: node.id, message: `Cycle detected at "${node.name}"` });
+    warnings.push({ type: 'cycle', nodeId: node.id, message: t('bomWarnings.cycle', { nodeName: node.name }) });
     return makeCycleNode(node, slot, depth);
   }
   visited.add(visitKey);
@@ -142,7 +147,7 @@ function computeOneTime(
   }
 
   if (isCatalystBlocked) {
-    warnings.push({ type: 'catalyst_missing', nodeId: node.id, message: `Required catalyst missing for "${slot.name}" on "${node.name}"` });
+    warnings.push({ type: 'catalyst_missing', nodeId: node.id, message: t('bomWarnings.catalystMissing', { slotName: slot.name, nodeName: node.name }) });
   }
 
   visited.delete(visitKey);
@@ -182,12 +187,12 @@ function computeContinuous(
   const visitKey = `${node.id}:${slot.id}`;
 
   if (depth > MAX_DEPTH) {
-    warnings.push({ type: 'cycle', nodeId: node.id, message: `Max depth (${MAX_DEPTH}) exceeded at "${node.name}"` });
+    warnings.push({ type: 'cycle', nodeId: node.id, message: t('bomWarnings.maxDepth', { maxDepth: MAX_DEPTH, nodeName: node.name }) });
     return makeCycleNode(node, slot, depth);
   }
 
   if (visited.has(visitKey)) {
-    warnings.push({ type: 'cycle', nodeId: node.id, message: `Cycle detected at "${node.name}"` });
+    warnings.push({ type: 'cycle', nodeId: node.id, message: t('bomWarnings.cycle', { nodeName: node.name }) });
     return makeCycleNode(node, slot, depth);
   }
   visited.add(visitKey);
@@ -256,7 +261,7 @@ function computeContinuous(
     : collectByproductsContinuous(state, slot, cyclesPerMin, request.byproductStrategy, accumulator);
 
   if (isCatalystBlocked) {
-    warnings.push({ type: 'catalyst_missing', nodeId: node.id, message: `Required catalyst missing for "${slot.name}" on "${node.name}"` });
+    warnings.push({ type: 'catalyst_missing', nodeId: node.id, message: t('bomWarnings.catalystMissing', { slotName: slot.name, nodeName: node.name }) });
   }
 
   visited.delete(visitKey);

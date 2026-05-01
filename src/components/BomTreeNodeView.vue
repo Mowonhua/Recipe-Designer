@@ -30,21 +30,21 @@
       <!-- Continuous mode -->
       <template v-if="mode === 'continuous'">
         <span class="node-machines mono" v-if="node.machineCount !== undefined">
-          {{ fmtNum(node.machineCount) }} machines
+          {{ fmtNum(node.machineCount) }} {{ $t('bom.machines') }}
         </span>
         <span class="node-rate mono" v-if="node.actualOutputRate !== undefined">
-          {{ fmtNum(node.actualOutputRate) }}/min
+          {{ fmtNum(node.actualOutputRate) }}{{ $t('bom.perMin') }}
         </span>
       </template>
 
       <!-- Flags -->
-      <span v-if="node.isRawMaterial" class="flag raw">RAW</span>
-      <span v-if="node.isByproduct" class="flag bp">BP</span>
+      <span v-if="node.isRawMaterial" class="flag raw">{{ $t('bom.raw') }}</span>
+      <span v-if="node.isByproduct" class="flag bp">{{ $t('bom.bp') }}</span>
       <span v-if="node.isSurplus && node.surplusPercent !== undefined" class="flag surplus">
-        +{{ node.surplusPercent.toFixed(1) }}%
+        {{ $t('bom.surplus', { pct: node.surplusPercent.toFixed(1) }) }}
       </span>
-      <span v-if="node.isCatalystBlocked" class="flag blocked">NO CAT</span>
-      <span v-if="node.isCycleDetected" class="flag cycle">CYCLE</span>
+      <span v-if="node.isCatalystBlocked" class="flag blocked">{{ $t('bom.noCat') }}</span>
+      <span v-if="node.isCycleDetected" class="flag cycle">{{ $t('bom.cycle') }}</span>
     </div>
 
     <!-- Input edges + child trees -->
@@ -65,7 +65,7 @@
         <div v-else class="raw-leaf">
           <span class="node-dot" :style="{ background: edge.sourceNodeColor }"></span>
           <span class="node-name">{{ edge.sourceNodeName }}</span>
-          <span class="flag raw">RAW</span>
+          <span class="flag raw">{{ $t('bom.raw') }}</span>
         </div>
       </div>
     </div>
@@ -78,7 +78,7 @@
         <span class="bp-name">{{ bp.itemName }}</span>
         <span class="bp-qty mono">×{{ fmtNum(bp.quantity) }}</span>
         <span v-if="bp.offsetConsumed" class="bp-offset mono">(−{{ fmtNum(bp.offsetConsumed) }})</span>
-        <span class="flag bp">BP</span>
+        <span class="flag bp">{{ $t('bom.bp') }}</span>
       </div>
     </div>
   </div>

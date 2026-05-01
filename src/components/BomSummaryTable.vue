@@ -2,10 +2,10 @@
   <table class="bom-summary">
     <thead>
       <tr>
-        <th class="col-name">Item</th>
-        <th v-if="mode === 'one-time'" class="col-qty">Quantity</th>
-        <th v-if="mode === 'continuous'" class="col-rate">Rate/min</th>
-        <th v-if="mode === 'continuous'" class="col-machines">Machines</th>
+        <th class="col-name">{{ $t('bom.tableItem') }}</th>
+        <th v-if="mode === 'one-time'" class="col-qty">{{ $t('bom.tableQuantity') }}</th>
+        <th v-if="mode === 'continuous'" class="col-rate">{{ $t('bom.tableRateMin') }}</th>
+        <th v-if="mode === 'continuous'" class="col-machines">{{ $t('bom.tableMachines') }}</th>
         <th class="col-flags"></th>
       </tr>
     </thead>
@@ -30,9 +30,9 @@
         <td v-if="mode === 'continuous'" class="col-rate mono">{{ fmt(row.totalRate) }}</td>
         <td v-if="mode === 'continuous'" class="col-machines mono">{{ fmt(row.totalMachines) }}</td>
         <td class="col-flags">
-          <span v-if="row.isRawMaterial" class="tag-pill raw-tag">RAW</span>
-          <span v-if="row.isByproduct" class="tag-pill bp-tag">BP</span>
-          <span v-if="row.isSurplus" class="tag-pill surplus-tag">+{{ row.surplusPercent?.toFixed(1) }}%</span>
+          <span v-if="row.isRawMaterial" class="tag-pill raw-tag">{{ $t('bom.raw') }}</span>
+          <span v-if="row.isByproduct" class="tag-pill bp-tag">{{ $t('bom.bp') }}</span>
+          <span v-if="row.isSurplus" class="tag-pill surplus-tag">{{ row.surplusPercent ? $t('bom.surplus', { pct: row.surplusPercent.toFixed(1) }) : '' }}</span>
         </td>
       </tr>
     </tbody>

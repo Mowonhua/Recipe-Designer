@@ -49,7 +49,7 @@
 
     <!-- Expanded: slot picker panel with handles embedded in each row -->
     <div v-else class="slot-panel">
-      <div class="panel-header">Drop on a slot</div>
+      <div class="panel-header">{{ $t('itemNode.dropOnSlot') }}</div>
 
       <div
         v-for="slot in data.slots"
@@ -85,7 +85,7 @@
 
       <div class="slot-row new-slot-row">
         <span class="new-slot-plus">+</span>
-        <span class="new-slot-label">New Slot</span>
+        <span class="new-slot-label">{{ $t('itemNode.newSlot') }}</span>
         <Handle
           type="target"
           :position="Position.Bottom"
@@ -101,8 +101,11 @@
 <script setup lang="ts">
 import { ref, computed, watch, inject, nextTick, type Ref } from 'vue';
 import { Handle, Position } from '@vue-flow/core';
+import { useI18n } from 'vue-i18n';
 import type { ItemNode } from '../store';
 import { useStore } from '../store';
+
+const { t } = useI18n();
 
 const props = defineProps<{
   id: string;
@@ -151,7 +154,7 @@ watch(() => props.data.slots.map(s => s.name), (names) => {
   if (idx !== -1 && renameSlotId.value !== props.data.slots[idx]?.id) {
     const slot = props.data.slots[idx];
     renameSlotId.value = slot.id;
-    renameValue.value = 'New Recipe';
+    renameValue.value = t('itemNode.newRecipe');
     nextTick(() => {
       const input = document.querySelector('.slot-row.renaming .rename-input') as HTMLInputElement;
       input?.focus();
@@ -163,7 +166,7 @@ watch(() => props.data.slots.map(s => s.name), (names) => {
 function confirmRename() {
   const slotId = renameSlotId.value;
   if (!slotId) return;
-  const name = renameValue.value.trim() || 'New Recipe';
+  const name = renameValue.value.trim() || t('itemNode.newRecipe');
   const slot = props.data.slots.find(s => s.id === slotId);
   if (slot) {
     slot.name = name;
