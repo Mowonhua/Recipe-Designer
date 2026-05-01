@@ -64,6 +64,16 @@
     "imageTooLarge": "图片太大。请使用小于 256KB 的图片。",
     "newRecipe": "新配方",
     "deleteSlotConfirm": "删除此配方槽及其所有连线？",
+    "catalyst": "（催化剂）",
+    "catalystItem": "催化剂物品",
+    "catalystQuantity": "催化剂数量",
+    "catalystSpeedMultiplier": "速度倍率",
+    "catalystSelect": "从输入中选择",
+    "byproductSelect": "添加副产物物品",
+    "noInputsForCatalyst": "无可用输入连线",
+    "secondaryOutputs": "副产物输出",
+    "addSecondaryOutput": "+ 添加",
+    "deleteSecondaryOutput": "删除",
     "unknown": "未知"
   },
   "popover": {
@@ -76,6 +86,8 @@
     "noInputs": "无输入",
     "byproducts": "副产物",
     "noByproducts": "无副产物",
+    "catalyst": "催化剂",
+    "noCatalyst": "无催化剂",
     "unknown": "未知"
   },
   "search": {
@@ -154,6 +166,7 @@
     "perMin": "/分钟",
     "raw": "原料",
     "bp": "副产",
+    "cat": "催化",
     "noCat": "缺催化剂",
     "cycle": "循环",
     "surplus": "+{pct}%",

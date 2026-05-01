@@ -32,6 +32,7 @@ export interface BomTreeNode {
   targetQuantity: number;
   inputs: BomTreeEdge[];
   byproducts: BomByproduct[];
+  catalyst?: BomTreeEdge;
 
   isRawMaterial: boolean;
   isByproduct: boolean;
@@ -49,6 +50,7 @@ export interface BomTreeEdge {
   quantity: number;
   child: BomTreeNode | null;
   isByproduct?: boolean;
+  isCatalyst?: boolean;
 }
 
 export interface BomByproduct {
@@ -68,6 +70,7 @@ export interface BomSummaryRow {
   totalMachines?: number;
   isRawMaterial: boolean;
   isByproduct: boolean;
+  isCatalyst?: boolean;
   isSurplus: boolean;
   surplusPercent?: number;
 }

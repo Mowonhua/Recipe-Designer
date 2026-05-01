@@ -70,6 +70,16 @@
       </div>
     </div>
 
+    <!-- Catalyst at this node -->
+    <div v-if="node.catalyst" class="catalyst-line">
+      <div class="edge-indicator">
+        <span class="edge-arrow cat-arrow">→</span>
+        <span class="edge-source cat-label">{{ node.catalyst.sourceNodeName }}</span>
+        <span class="edge-qty mono">×{{ fmtNum(node.catalyst.quantity) }}</span>
+        <span class="flag cat">{{ $t('bom.cat') }}</span>
+      </div>
+    </div>
+
     <!-- Byproducts at this node -->
     <div v-if="node.byproducts.length > 0" class="byproducts-list">
       <div v-for="bp in node.byproducts" :key="bp.itemId" class="bp-row" :class="{ consumed: (bp.offsetConsumed ?? 0) > 0 }">
@@ -223,6 +233,19 @@ function fmtNum(v: number): string {
   font-size: 11px;
   opacity: 0.7;
 }
+
+.catalyst-line {
+  margin-left: 12px;
+  padding-left: 8px;
+  border-left: var(--border-width-md) solid var(--accent-blue);
+  margin-top: 2px;
+  margin-bottom: 2px;
+}
+
+.cat-arrow { color: var(--accent-blue); }
+.cat-label { color: var(--accent-blue); }
+
+.flag.cat { background: var(--accent-blue); color: #fff; }
 
 .byproducts-list {
   margin-left: 12px;

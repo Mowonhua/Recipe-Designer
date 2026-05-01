@@ -106,6 +106,24 @@ function computeOneTime(
     };
   });
 
+  // Find catalyst edge for this slot (does not participate in upstream tracing)
+  const catalystEdge = state.edges.find(
+    e => e.target === node.id && e.target_slot_id === slot.id && e.edge_type === 'catalyst',
+  );
+  let catalyst: BomTreeEdge | undefined;
+  if (catalystEdge && !isCatalystBlocked) {
+    const catalystNode = state.nodes.find(n => n.id === catalystEdge.source);
+    catalyst = {
+      edgeId: catalystEdge.id,
+      sourceNodeId: catalystEdge.source,
+      sourceNodeName: catalystNode?.name || catalystEdge.source,
+      sourceNodeColor: catalystNode?.color || '#64748b',
+      quantity: 1,
+      child: null,
+      isCatalyst: true,
+    };
+  }
+
   const byproducts = isCatalystBlocked
     ? []
     : collectByproducts(state, slot, executionCount, request.byproductStrategy, accumulator);
@@ -164,6 +182,7 @@ function computeOneTime(
     targetQuantity: request.targetQuantity,
     inputs,
     byproducts,
+    catalyst,
     isRawMaterial: false,
     isByproduct: false,
     isSurplus,
@@ -255,6 +274,24 @@ function computeContinuous(
     };
   });
 
+  // Find catalyst edge for this slot (does not participate in upstream tracing)
+  const catalystEdgeC = state.edges.find(
+    e => e.target === node.id && e.target_slot_id === slot.id && e.edge_type === 'catalyst',
+  );
+  let catalystC: BomTreeEdge | undefined;
+  if (catalystEdgeC && !isCatalystBlocked) {
+    const catalystNodeC = state.nodes.find(n => n.id === catalystEdgeC.source);
+    catalystC = {
+      edgeId: catalystEdgeC.id,
+      sourceNodeId: catalystEdgeC.source,
+      sourceNodeName: catalystNodeC?.name || catalystEdgeC.source,
+      sourceNodeColor: catalystNodeC?.color || '#64748b',
+      quantity: machineCount,
+      child: null,
+      isCatalyst: true,
+    };
+  }
+
   // Byproducts: cycles per minute
   const cyclesPerMin = (machineCount / actualTimePerCycleSec) * 60;
   const byproducts = isCatalystBlocked
@@ -279,6 +316,7 @@ function computeContinuous(
     targetQuantity: request.targetQuantity,
     inputs,
     byproducts,
+    catalyst: catalystC,
     isRawMaterial: false,
     isByproduct: false,
     isSurplus,
@@ -318,6 +356,7 @@ function collectSummary(node: BomTreeNode, request: BomRequest, map: Map<string,
           existing.totalRate = (existing.totalRate || 0) + edge.quantity;
         }
         if (isBpLeaf) existing.isByproduct = true;
+        if (edge.isCatalyst) existing.isCatalyst = true;
       } else {
         map.set(edge.sourceNodeId, {
           itemId: edge.sourceNodeId,
@@ -325,8 +364,9 @@ function collectSummary(node: BomTreeNode, request: BomRequest, map: Map<string,
           itemColor: edge.sourceNodeColor,
           totalQuantity: request.mode === 'one-time' ? edge.quantity : undefined,
           totalRate: request.mode === 'continuous' ? edge.quantity : undefined,
-          isRawMaterial: !isBpLeaf,
+          isRawMaterial: !isBpLeaf && !edge.isCatalyst,
           isByproduct: isBpLeaf,
+          isCatalyst: edge.isCatalyst || false,
           isSurplus: false,
         });
       }
@@ -340,6 +380,11 @@ function collectSummary(node: BomTreeNode, request: BomRequest, map: Map<string,
     for (const bp of node.byproducts) {
       addByproductToSummary(bp, request, map);
     }
+  }
+
+  // Collect catalyst from this node
+  if (node.catalyst) {
+    addCatalystToSummary(node.catalyst, request, map);
   }
 }
 
@@ -389,6 +434,31 @@ function addByproductToSummary(bp: BomByproduct, request: BomRequest, map: Map<s
       totalRate: request.mode === 'continuous' ? bp.quantity : undefined,
       isRawMaterial: false,
       isByproduct: true,
+      isSurplus: false,
+    });
+  }
+}
+
+
+function addCatalystToSummary(edge: BomTreeEdge, request: BomRequest, map: Map<string, BomSummaryRow>): void {
+  const existing = map.get(edge.sourceNodeId);
+  if (existing) {
+    if (request.mode === 'one-time') {
+      existing.totalQuantity = (existing.totalQuantity || 0) + edge.quantity;
+    } else {
+      existing.totalRate = (existing.totalRate || 0) + edge.quantity;
+    }
+    existing.isCatalyst = true;
+  } else {
+    map.set(edge.sourceNodeId, {
+      itemId: edge.sourceNodeId,
+      itemName: edge.sourceNodeName,
+      itemColor: edge.sourceNodeColor,
+      totalQuantity: request.mode === 'one-time' ? edge.quantity : undefined,
+      totalRate: request.mode === 'continuous' ? edge.quantity : undefined,
+      isRawMaterial: false,
+      isByproduct: false,
+      isCatalyst: true,
       isSurplus: false,
     });
   }

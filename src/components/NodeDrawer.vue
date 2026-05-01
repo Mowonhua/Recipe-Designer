@@ -128,6 +128,97 @@
                 />
               </div>
             </div>
+            <!-- Catalyst picker (only when mode is not 'none') -->
+            <div v-if="editSlots[slot.id].catalyst_mode !== 'none'" class="catalyst-section">
+              <div class="form-row">
+                <div class="form-group flex-1">
+                  <label>{{ $t('drawer.catalystItem') }}</label>
+                  <n-select
+                    v-model:value="editSlots[slot.id].catalyst_item_id"
+                    :options="getCatalystOptions(slot.id)"
+                    :placeholder="$t('drawer.catalystSelect')"
+                    size="small"
+                    clearable
+                    filterable
+                  />
+                </div>
+                <div class="form-group w-70">
+                  <label>{{ $t('drawer.catalystQuantity') }}</label>
+                  <n-input-number v-model:value="editSlots[slot.id].catalyst_quantity" size="small" :min="1" />
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-group w-70">
+                  <label>{{ $t('drawer.catalystSpeedMultiplier') }}</label>
+                  <n-input-number v-model:value="editSlots[slot.id].catalyst_speed_multiplier" size="small" :min="0.1" :step="0.1" />
+                </div>
+              </div>
+            </div>
+            <!-- Secondary Outputs (byproducts) -->
+            <div class="form-group">
+              <label>{{ $t('drawer.secondaryOutputs') }}</label>
+              <div class="so-list">
+                <div v-for="(so, i) in (editSlots[slot.id].secondary_outputs || [])" :key="i" class="so-card">
+                  <span class="so-card-name">{{ getNodeName(so.item_id) }}</span>
+                  <span class="so-card-divider"></span>
+                  <span
+                    class="so-card-qty"
+                    @click.stop="startEditByproductQty(slot.id, i)"
+                    @wheel.prevent="onByproductWheel(slot.id, i, $event)"
+                  >
+                    <template v-if="editingByproductQty[`${slot.id}:${i}`]">
+                      <input
+                        :ref="(el: unknown) => setByproductQtyRef(`${slot.id}:${i}`, el as HTMLInputElement | null)"
+                        v-model.number="byproductQtyValues[`${slot.id}:${i}`]"
+                        class="so-qty-input"
+                        type="number"
+                        min="1"
+                        step="1"
+                        @blur="finishEditByproductQty(slot.id, i)"
+                        @keydown.enter.prevent="finishEditByproductQty(slot.id, i)"
+                        @keydown.escape="cancelEditByproductQty(slot.id, i)"
+                        @click.stop
+                        @wheel.prevent.stop
+                      />
+                    </template>
+                    <template v-else>
+                      {{ so.quantity }}
+                    </template>
+                  </span>
+                  <span class="so-card-remove" @click="removeSecondaryOutput(slot.id, i)">×</span>
+                </div>
+                <div class="so-card so-card-add" :class="{ open: addingByproduct[slot.id] }" @click.stop="startAddByproduct(slot.id)">
+                  <span class="so-add-plus">+</span>
+                  <span class="so-add-label">{{ $t('drawer.byproductSelect') }}</span>
+                </div>
+                <!-- Item picker popup -->
+                <div v-if="addingByproduct[slot.id]" class="so-picker-wrapper" @click.stop>
+                  <div class="so-picker-search">
+                    <input
+                      ref="byproductSearchInput"
+                      v-model="byproductSearch[slot.id]"
+                      class="so-picker-input"
+                      :placeholder="$t('search.placeholder')"
+                      @keydown.escape="cancelAddByproduct(slot.id)"
+                    />
+                  </div>
+                  <div class="so-picker-list">
+                    <div
+                      v-for="item in filteredByproductOptions(slot.id)"
+                      :key="item.value"
+                      class="so-picker-item"
+                      @click="finishAddByproduct(slot.id, item.value)"
+                    >
+                      <span class="so-picker-dot" :style="{ background: item.color || '#64748b' }"></span>
+                      <span class="so-picker-name">{{ item.label }}</span>
+                    </div>
+                    <div v-if="filteredByproductOptions(slot.id).length === 0" class="so-picker-empty">
+                      {{ $t('search.noResults') }}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
             <n-button size="tiny" @click="saveSlot(slot.id)">{{ $t('drawer.saveSlot') }}</n-button>
           </div>
           <n-button dashed size="small" @click="addNewSlot" block style="margin-top: 8px;">
@@ -159,7 +250,7 @@
           <div class="section-label">{{ $t('drawer.downstream') }}</div>
           <div v-for="rel in downstream" :key="rel.id" class="relation-row" @click="flyTo(rel.id)">
             <span class="io-dot" :style="{ background: rel.color }"></span>
-            <span class="relation-name">{{ rel.name }}<template v-if="rel.type === 'byproduct'"> {{ $t('drawer.byproduct') }}</template></span>
+            <span class="relation-name">{{ rel.name }}<template v-if="rel.type === 'byproduct'"> {{ $t('drawer.byproduct') }}</template><template v-if="rel.type === 'catalyst'"> {{ $t('drawer.catalyst') }}</template></span>
             <span class="relation-qty">×{{ rel.quantity }}</span>
           </div>
           <div v-if="downstream.length === 0" class="no-data">{{ $t('drawer.noDownstream') }}</div>
@@ -167,7 +258,7 @@
           <div class="section-label" style="margin-top: 16px;">{{ $t('drawer.upstream') }}</div>
           <div v-for="rel in upstream" :key="rel.id" class="relation-row" @click="flyTo(rel.id)">
             <span class="io-dot" :style="{ background: rel.color }"></span>
-            <span class="relation-name">{{ rel.name }}<template v-if="rel.type === 'byproduct'"> {{ $t('drawer.byproduct') }}</template></span>
+            <span class="relation-name">{{ rel.name }}<template v-if="rel.type === 'byproduct'"> {{ $t('drawer.byproduct') }}</template><template v-if="rel.type === 'catalyst'"> {{ $t('drawer.catalyst') }}</template></span>
             <span class="relation-qty">×{{ rel.quantity }}</span>
           </div>
           <div v-if="upstream.length === 0" class="no-data">{{ $t('drawer.noUpstream') }}</div>
@@ -189,7 +280,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, reactive } from 'vue';
+import { ref, computed, watch, reactive, nextTick } from 'vue';
 import {
   NDrawer, NDrawerContent, NTabs, NTabPane,
   NInput, NInputNumber, NSwitch, NSelect, NButton,
@@ -280,9 +371,22 @@ interface SlotEdit {
   machine_id: string;
   tags: string[];
   catalyst_mode: 'none' | 'optional' | 'required';
+  catalyst_item_id?: string;
+  catalyst_quantity: number;
+  catalyst_speed_multiplier: number;
+  secondary_outputs: { item_id: string; quantity: number }[];
 }
 const editSlots = reactive<Record<string, SlotEdit>>({});
 const slotTagInputs = reactive<Record<string, string>>({});
+const addingByproduct = reactive<Record<string, boolean>>({});
+const byproductSearch = reactive<Record<string, string>>({});
+const editingByproductQty = reactive<Record<string, boolean>>({});
+const byproductQtyValues = reactive<Record<string, number>>({});
+const byproductQtyRefs: Record<string, HTMLInputElement | null> = {};
+
+function setByproductQtyRef(key: string, el: HTMLInputElement | null) {
+  byproductQtyRefs[key] = el;
+}
 
 const colorPresets = ['#f0883e', '#58a6ff', '#3fb950', '#e0555a', '#a371f7', '#e6c34a', '#768390', '#f778ba'];
 
@@ -338,6 +442,10 @@ watch(() => props.node?.slots, (slots) => {
         machine_id: s.machine_id,
         tags: [...s.tags],
         catalyst_mode: s.catalyst_mode,
+        catalyst_item_id: s.catalyst?.item_id,
+        catalyst_quantity: s.catalyst?.quantity || 1,
+        catalyst_speed_multiplier: s.catalyst?.speed_multiplier || 1,
+        secondary_outputs: [...s.secondary_outputs],
       };
       slotTagInputs[s.id] = '';
     }
@@ -369,7 +477,36 @@ function saveSlot(slotId: string) {
   if (!slot) return;
   const edits = editSlots[slotId];
   if (!edits) return;
-  Object.assign(slot, edits);
+  slot.name = edits.name;
+  slot.time = edits.time;
+  slot.primary_output_quantity = edits.primary_output_quantity;
+  slot.machine_id = edits.machine_id;
+  slot.tags = edits.tags;
+  slot.catalyst_mode = edits.catalyst_mode;
+  // Manage catalyst edge: change edge type between 'input' and 'catalyst'
+  // First, revert any previous catalyst edge for this slot back to 'input'
+  const prevCatalystEdges = store.edges.filter(
+    e => e.target === props.node!.id && e.target_slot_id === slotId && e.edge_type === 'catalyst',
+  );
+  for (const e of prevCatalystEdges) {
+    store.updateEdge(e.id, { edge_type: 'input' });
+  }
+  if (edits.catalyst_mode !== 'none' && edits.catalyst_item_id) {
+    slot.catalyst = {
+      item_id: edits.catalyst_item_id,
+      quantity: edits.catalyst_quantity || 1,
+      speed_multiplier: edits.catalyst_speed_multiplier || undefined,
+    };
+    // Change the matching input edge to catalyst type
+    const catalystEdge = store.edges.find(
+      e => e.target === props.node!.id && e.target_slot_id === slotId && e.source === edits.catalyst_item_id && e.edge_type === 'input',
+    );
+    if (catalystEdge) {
+      store.updateEdge(catalystEdge.id, { edge_type: 'catalyst' });
+    }
+  } else {
+    slot.catalyst = undefined;
+  }
   store.changeCounter++;
 }
 
@@ -389,6 +526,177 @@ function addNewSlot() {
   if (!props.node.active_slot_id) {
     store.setActiveSlot(props.node.id, slot.id);
   }
+}
+
+// --- Catalyst options ---
+function getCatalystOptions(slotId: string) {
+  if (!props.node) return [];
+  const inputEdges = store.edges.filter(
+    e => e.target === props.node!.id && e.target_slot_id === slotId && (e.edge_type === 'input' || e.edge_type === 'catalyst'),
+  );
+  return inputEdges.map(e => {
+    const src = store.nodes.find(n => n.id === e.source);
+    return { label: src?.name || e.source, value: e.source };
+  });
+}
+
+// --- Byproduct options ---
+function getByproductOptions() {
+  if (!props.node) return [];
+  return store.nodes
+    .filter(n => n.id !== props.node!.id)
+    .map(n => ({ label: n.name, value: n.id, color: n.color }));
+}
+
+function filteredByproductOptions(slotId: string) {
+  const all = getByproductOptions();
+  const search = (byproductSearch[slotId] || '').toLowerCase();
+  if (!search) return all.slice(0, 50);
+  return all.filter(o => o.label.toLowerCase().includes(search)).slice(0, 50);
+}
+
+// --- Byproduct add UI ---
+function startAddByproduct(slotId: string) {
+  if (addingByproduct[slotId]) {
+    cancelAddByproduct(slotId);
+    return;
+  }
+  addingByproduct[slotId] = true;
+  byproductSearch[slotId] = '';
+  nextTick(() => {
+    const input = document.querySelector('.so-picker-input') as HTMLInputElement | null;
+    input?.focus();
+  });
+}
+
+function finishAddByproduct(slotId: string, itemId: string) {
+  addingByproduct[slotId] = false;
+  byproductSearch[slotId] = '';
+  if (itemId) {
+    addSecondaryOutput(slotId, itemId);
+  }
+}
+
+function cancelAddByproduct(slotId: string) {
+  addingByproduct[slotId] = false;
+  byproductSearch[slotId] = '';
+}
+
+// --- Byproduct quantity inline editing ---
+function startEditByproductQty(slotId: string, index: number) {
+  const key = `${slotId}:${index}`;
+  const edits = editSlots[slotId];
+  if (!edits) return;
+  const so = edits.secondary_outputs?.[index];
+  if (!so) return;
+  byproductQtyValues[key] = so.quantity;
+  editingByproductQty[key] = true;
+  nextTick(() => {
+    const el = byproductQtyRefs[key];
+    el?.focus();
+    el?.select();
+  });
+}
+
+function finishEditByproductQty(slotId: string, index: number) {
+  const key = `${slotId}:${index}`;
+  const edits = editSlots[slotId];
+  if (!edits) return;
+  const so = edits.secondary_outputs?.[index];
+  if (!so) return;
+  const newVal = byproductQtyValues[key];
+  if (newVal != null && newVal > 0) {
+    so.quantity = newVal;
+    // Sync to original slot
+    const slot = props.node?.slots.find(s => s.id === slotId);
+    if (slot?.secondary_outputs[index]) {
+      slot.secondary_outputs[index].quantity = newVal;
+    }
+    // Update byproduct edge quantity
+    const byproductEdge = store.edges.find(
+      e => e.source === props.node!.id && e.target === so.item_id && e.edge_type === 'byproduct',
+    );
+    if (byproductEdge) {
+      store.updateEdge(byproductEdge.id, { quantity: newVal });
+    }
+    store.changeCounter++;
+  }
+  editingByproductQty[key] = false;
+  delete byproductQtyValues[key];
+}
+
+function cancelEditByproductQty(slotId: string, index: number) {
+  const key = `${slotId}:${index}`;
+  editingByproductQty[key] = false;
+  delete byproductQtyValues[key];
+}
+
+function onByproductWheel(slotId: string, index: number, e: WheelEvent) {
+  const edits = editSlots[slotId];
+  if (!edits) return;
+  const so = edits.secondary_outputs?.[index];
+  if (!so) return;
+  const delta = e.deltaY < 0 ? 1 : -1;
+  const newVal = Math.max(1, so.quantity + delta);
+  so.quantity = Math.round(newVal);
+  // Sync to original slot
+  const slot = props.node?.slots.find(s => s.id === slotId);
+  if (slot?.secondary_outputs[index]) {
+    slot.secondary_outputs[index].quantity = so.quantity;
+  }
+  // Update byproduct edge quantity
+  const byproductEdge = store.edges.find(
+    e => e.source === props.node!.id && e.target === so.item_id && e.edge_type === 'byproduct',
+  );
+  if (byproductEdge) {
+    store.updateEdge(byproductEdge.id, { quantity: so.quantity });
+  }
+  store.changeCounter++;
+}
+
+// --- Secondary output management ---
+function addSecondaryOutput(slotId: string, itemId: string | null) {
+  if (!props.node || !itemId) return;
+  const slot = props.node.slots.find(s => s.id === slotId);
+  if (!slot) return;
+  if (slot.secondary_outputs.some(so => so.item_id === itemId)) return;
+  slot.secondary_outputs.push({ item_id: itemId, quantity: 1 });
+  const targetNode = store.nodes.find(n => n.id === itemId);
+  if (targetNode) {
+    const targetSlotId = targetNode.active_slot_id || targetNode.slots[0]?.id;
+    const newEdge = {
+      id: uuidv4(),
+      source: props.node.id,
+      target: itemId,
+      target_slot_id: targetSlotId || '',
+      quantity: 1,
+      edge_type: 'byproduct' as const,
+    };
+    store.addEdge(newEdge);
+  }
+  if (editSlots[slotId]) {
+    editSlots[slotId].secondary_outputs = [...slot.secondary_outputs];
+  }
+  store.changeCounter++;
+}
+
+function removeSecondaryOutput(slotId: string, index: number) {
+  if (!props.node) return;
+  const slot = props.node.slots.find(s => s.id === slotId);
+  if (!slot) return;
+  const removed = slot.secondary_outputs[index];
+  if (!removed) return;
+  slot.secondary_outputs.splice(index, 1);
+  const byproductEdge = store.edges.find(
+    e => e.source === props.node!.id && e.target === removed.item_id && e.edge_type === 'byproduct',
+  );
+  if (byproductEdge) {
+    store.deleteEdge(byproductEdge.id);
+  }
+  if (editSlots[slotId]) {
+    editSlots[slotId].secondary_outputs = [...slot.secondary_outputs];
+  }
+  store.changeCounter++;
 }
 
 function deleteSlot(slotId: string) {
@@ -848,5 +1156,224 @@ function flyTo(nodeId: string) {
 
 :deep(.n-drawer-container) {
   transition: transform var(--transition-slow) var(--ease-bounce) !important;
+}
+
+/* ---- Byproduct Cards ---- */
+.so-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  position: relative;
+}
+
+.so-card {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  border: var(--border-width-md) solid var(--border-default);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  background: var(--bg-surface);
+  box-shadow: var(--shadow-node);
+  transition: box-shadow var(--transition-fast), transform var(--transition-fast);
+}
+
+.so-card:hover {
+  box-shadow: var(--shadow-node-hover);
+  transform: translate(-1px, -1px);
+}
+
+.so-card-name {
+  flex: 1;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.so-card-divider {
+  width: 1px;
+  height: 18px;
+  background: var(--border-default);
+  flex-shrink: 0;
+  align-self: center;
+}
+
+.so-card-qty {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--text-primary);
+  cursor: pointer;
+  min-width: 28px;
+  text-align: center;
+  padding: 2px 4px;
+  border: var(--border-width-sm) solid transparent;
+  transition: border-color var(--transition-fast), background var(--transition-fast);
+  flex-shrink: 0;
+}
+
+.so-card-qty:hover {
+  border-color: var(--border-default);
+  background: var(--bg-input);
+}
+
+.so-qty-input {
+  width: 52px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 800;
+  text-align: center;
+  color: var(--text-primary);
+  border: var(--border-width-md) solid var(--accent-blue);
+  background: var(--bg-input);
+  outline: none;
+  padding: 2px 4px;
+  box-shadow: var(--shadow-node);
+  -moz-appearance: textfield;
+}
+
+.so-qty-input::-webkit-outer-spin-button,
+.so-qty-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.so-card-remove {
+  cursor: pointer;
+  font-weight: 900;
+  font-size: 18px;
+  color: var(--accent-red);
+  flex-shrink: 0;
+  padding: 0 4px;
+  line-height: 1;
+  transition: transform var(--transition-fast);
+}
+
+.so-card-remove:hover {
+  transform: scale(1.3);
+}
+
+/* Add byproduct card (dashed border) */
+.so-card-add {
+  border-style: dashed;
+  cursor: pointer;
+  opacity: 0.7;
+  transition: opacity var(--transition-fast), border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.so-card-add:hover,
+.so-card-add.open {
+  opacity: 1;
+  border-color: var(--accent-blue);
+  box-shadow: var(--shadow-node-hover);
+}
+
+.so-add-plus {
+  font-weight: 900;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.so-add-label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+/* ---- Byproduct Picker Popup (ol-menu style) ---- */
+.so-picker-wrapper {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  right: 0;
+  margin-bottom: var(--spacing-xs);
+  background: var(--panel-bg);
+  border: var(--border-width-md) solid var(--border-default);
+  box-shadow: var(--shadow-modal);
+  z-index: 100;
+  max-height: 360px;
+  display: flex;
+  flex-direction: column;
+}
+
+.so-picker-search {
+  padding: var(--spacing-sm);
+  border-bottom: var(--border-width-md) solid var(--border-default);
+  flex-shrink: 0;
+}
+
+.so-picker-input {
+  width: 100%;
+  padding: 8px 10px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  border: var(--border-width-md) solid var(--border-default);
+  background: var(--bg-input);
+  color: var(--text-primary);
+  outline: none;
+  box-sizing: border-box;
+  box-shadow: var(--shadow-inset-soft);
+}
+
+.so-picker-input:focus {
+  border-color: var(--accent-blue);
+}
+
+.so-picker-list {
+  overflow-y: auto;
+  flex: 1;
+}
+
+.so-picker-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: 8px 12px;
+  cursor: pointer;
+  border-bottom: var(--border-width-sm) solid var(--border-subtle);
+  font-family: var(--font-ui);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+  transition: background var(--transition-fast), padding-left var(--transition-fast);
+}
+
+.so-picker-item:last-child {
+  border-bottom: none;
+}
+
+.so-picker-item:hover {
+  background: var(--bg-hover);
+  padding-left: 18px;
+}
+
+.so-picker-dot {
+  width: 10px;
+  height: 10px;
+  border: var(--border-width-sm) solid var(--border-default);
+  flex-shrink: 0;
+}
+
+.so-picker-name {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.so-picker-empty {
+  padding: 20px 16px;
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--text-muted);
+  text-transform: uppercase;
 }
 </style>

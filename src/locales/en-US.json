@@ -64,6 +64,16 @@
     "imageTooLarge": "Image too large. Please use an image under 256KB.",
     "newRecipe": "New Recipe",
     "deleteSlotConfirm": "Delete this recipe slot and all its connected edges?",
+    "catalyst": "Catalyst",
+    "catalystItem": "Catalyst Item",
+    "catalystQuantity": "Catalyst Qty",
+    "catalystSpeedMultiplier": "Speed Multiplier",
+    "catalystSelect": "Select from inputs",
+    "byproductSelect": "Add byproduct item",
+    "noInputsForCatalyst": "No input edges available",
+    "secondaryOutputs": "Secondary Outputs",
+    "addSecondaryOutput": "+ Add",
+    "deleteSecondaryOutput": "Delete",
     "unknown": "Unknown"
   },
   "popover": {
@@ -76,6 +86,8 @@
     "noInputs": "No inputs",
     "byproducts": "Byproducts",
     "noByproducts": "No byproducts",
+    "catalyst": "Catalyst",
+    "noCatalyst": "No catalyst",
     "unknown": "Unknown"
   },
   "search": {
@@ -154,6 +166,7 @@
     "perMin": "/min",
     "raw": "RAW",
     "bp": "BP",
+    "cat": "CAT",
     "noCat": "NO CAT",
     "cycle": "CYCLE",
     "surplus": "+{pct}%",

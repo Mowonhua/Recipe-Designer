@@ -56,6 +56,17 @@
           <div v-if="activeInputs.length === 0" class="no-data">{{ $t('popover.noInputs') }}</div>
         </div>
 
+        <!-- Catalyst -->
+        <div class="section-label">{{ $t('popover.catalyst') }}</div>
+        <div class="io-list">
+          <div v-if="activeCatalyst" class="io-row catalyst">
+            <span class="io-dot" :style="{ background: activeCatalyst.color }"></span>
+            <span class="io-name">{{ activeCatalyst.name }}</span>
+            <span class="io-qty">×{{ activeCatalyst.quantity }}</span>
+          </div>
+          <div v-if="!activeCatalyst" class="no-data">{{ $t('popover.noCatalyst') }}</div>
+        </div>
+
         <!-- Byproducts -->
         <div class="section-label">{{ $t('popover.byproducts') }}</div>
         <div class="io-list">
@@ -126,6 +137,19 @@ const activeInputs = computed(() => {
         quantity: e.quantity,
       };
     });
+});
+
+const activeCatalyst = computed(() => {
+  const node = props.node;
+  if (!node) return null;
+  const activeSlot = node.slots.find(s => s.id === node.active_slot_id);
+  if (!activeSlot?.catalyst?.item_id) return null;
+  const item = store.nodes.find(n => n.id === activeSlot.catalyst!.item_id);
+  return {
+    name: item?.name || t('popover.unknown'),
+    color: item?.color || '#3b82f6',
+    quantity: activeSlot.catalyst!.quantity || 1,
+  };
 });
 
 const activeByproducts = computed(() => {
@@ -261,6 +285,8 @@ const activeByproducts = computed(() => {
 }
 .io-row.byproduct .io-name { color: var(--accent-tan); }
 .io-row.byproduct .io-qty { color: var(--accent-tan); }
+.io-row.catalyst .io-name { color: var(--accent-blue); }
+.io-row.catalyst .io-qty { color: var(--accent-blue); }
 
 .no-data {
   font-size: 10px; color: var(--text-disabled); font-style: italic;

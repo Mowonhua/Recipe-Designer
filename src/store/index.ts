@@ -51,7 +51,7 @@ export interface FlowEdge {
   target: string;
   target_slot_id: string;
   quantity: number;
-  edge_type: 'input' | 'byproduct';
+  edge_type: 'input' | 'byproduct' | 'catalyst';
 }
 
 export interface Group {

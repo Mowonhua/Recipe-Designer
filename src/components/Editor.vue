@@ -223,7 +223,7 @@ function relayout() {
     incomingEdges.set(node.id, []);
   }
   for (const e of store.edges) {
-    if (nodeIds.has(e.source) && nodeIds.has(e.target) && e.edge_type === 'input') {
+    if (nodeIds.has(e.source) && nodeIds.has(e.target) && (e.edge_type === 'input' || e.edge_type === 'catalyst')) {
       incomingEdges.get(e.target)?.push(e.source);
     }
   }
@@ -416,7 +416,9 @@ function syncFromStore() {
     const edgeType = 'simplebezier';
     const edgeStyle = se.edge_type === 'byproduct'
       ? { stroke: 'var(--accent-tan)', strokeWidth: 1.5, opacity: 0.7, strokeDasharray: '5,5' }
-      : { stroke: '#64748b', strokeWidth: 2, opacity: 0.8 };
+      : se.edge_type === 'catalyst'
+        ? { stroke: 'var(--accent-blue)', strokeWidth: 2, opacity: 0.8 }
+        : { stroke: '#64748b', strokeWidth: 2, opacity: 0.8 };
     const animated = true;
 
     newEdges.push({

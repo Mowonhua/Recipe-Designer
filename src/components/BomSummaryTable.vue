@@ -17,6 +17,7 @@
         :class="{
           'raw-row': row.isRawMaterial,
           'byproduct-row': row.isByproduct,
+          'catalyst-row': row.isCatalyst,
           'surplus-row': row.isSurplus,
         }"
         @mouseenter="$emit('highlight', row.itemId)"
@@ -32,6 +33,7 @@
         <td class="col-flags">
           <span v-if="row.isRawMaterial" class="tag-pill raw-tag">{{ $t('bom.raw') }}</span>
           <span v-if="row.isByproduct" class="tag-pill bp-tag">{{ $t('bom.bp') }}</span>
+          <span v-if="row.isCatalyst" class="tag-pill cat-tag">{{ $t('bom.cat') }}</span>
           <span v-if="row.isSurplus" class="tag-pill surplus-tag">{{ row.surplusPercent ? $t('bom.surplus', { pct: row.surplusPercent.toFixed(1) }) : '' }}</span>
         </td>
       </tr>
@@ -120,7 +122,11 @@ td {
   border-radius: var(--radius-sm);
 }
 
+.catalyst-row .col-qty,
+.catalyst-row .col-rate { color: var(--accent-blue); }
+
 .raw-tag { background: var(--text-muted); color: var(--bg-color); }
 .bp-tag { background: var(--accent-tan); color: #fff; }
+.cat-tag { background: var(--accent-blue); color: #fff; }
 .surplus-tag { background: var(--accent-red); color: #fff; }
 </style>
