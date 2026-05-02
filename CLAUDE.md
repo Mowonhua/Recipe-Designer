@@ -26,26 +26,24 @@ All application state is in a single Pinia store (`recipe-designer`). The data m
 - **`RecipeSlot`** — how an item is produced: time, which `Machine`, tags, primary/secondary outputs, catalyst config.
 - **`Machine`** — production facility with base speed, tags, and allowed recipe tags.
 - **`GlobalEffect`** — multipliers on yield or speed from skills/treasure/research, filtered by target tags.
-- **`FlowEdge`** — connects nodes, represents item flow with quantity. Edges are slot-specific (`target_slot_id`). Two types: `'input'` (solid gray) and `'byproduct'` (dashed blue, no arrow).
+- **`FlowEdge`** — connects nodes, represents item flow with quantity. Edges are slot-specific (`target_slot_id`). Three types: `'input'` (solid gray), `'byproduct'` (dashed tan), and `'catalyst'` (dashed blue, no arrow).
 - **`Group`** — parent grouping of nodes, supports collapsed summary calculation.
 
 ### Components
 
-- **`App.vue`** — wraps the app in Naive UI providers (`NMessageProvider`, `NNotificationProvider`, `NDialogProvider`).
-
-- **`Editor.vue`** — main editor workspace hosting the Vue Flow canvas, controls, and editing interactions.
-
-- **`ItemNode.vue`** — custom Vue Flow node for items, showing recipe slots, outputs, and node visuals.
-
-- **`GroupNode.vue`** — collapsible group node that aggregates child nodes and displays a summary when collapsed.
-
-- **`NodeDrawer.vue`** — side drawer for viewing and editing the selected node's detailed recipe and settings.
-
-- **`NodePopover.vue`** — compact popover on nodes providing quick info and common actions.
-
-- **`DictionaryPanel.vue`** — left sidebar (220px) listing items and machines with drag-and-drop to the canvas.
-
-- **`SearchOverlay.vue`** — global search / quick-jump overlay (Ctrl+P) for locating nodes and resources.
+- **`App.vue`** — root wrapper providing Naive UI providers (`NMessageProvider`, `NNotificationProvider`, `NDialogProvider`).
+- **`Editor.vue`** — main workspace with the Vue Flow canvas, toolbar, and editing interactions.
+- **`ItemNode.vue`** — custom Vue Flow node displaying recipe slots, outputs, and production stats.
+- **`GroupNode.vue`** — collapsible group node aggregating children with a collapsed summary view.
+- **`NodeDrawer.vue`** — side drawer for editing the selected node's recipe, machine, and catalyst settings.
+- **`NodePopover.vue`** — compact popover on nodes for quick info and common actions.
+- **`DictionaryPanel.vue`** — left sidebar listing items and machines with drag-and-drop to canvas.
+- **`SearchOverlay.vue`** — global quick-jump overlay (Ctrl+P) for locating nodes and resources.
+- **`BomPanel.vue`** — right-side drawer for BOM (Bill of Materials) configuration and tree/summary views.
+- **`BomTreeNodeView.vue`** — recursive tree node for BOM drill-down with status flags and highlighting.
+- **`BomSummaryTable.vue`** — aggregated BOM summary table showing quantities, rates, and machine counts.
+- **`ContextMenu.vue`** — right-click context menu with configurable items and keyboard shortcuts.
+- **`ConfirmDialog.vue`** — teleported confirmation dialog with cancel/confirm actions.
 
 ### Mock data (`src/data/mock-data.ts`)
 
@@ -55,9 +53,9 @@ Demo factory production line: raw materials (Iron Ore, Copper Ore, Coal, Water, 
 
 **Aesthetic:** Bauhaus / Suprematism inspired. Emphasizes strict grids, highly contrasted primary colors (pure red, blue, yellow), sharp geometric edges (0px border radius), and intense solid block shadows. Components must support dark/light themes via CSS variables.
 
-**Design tokens** are in `src/styles/tokens.css` — the single source of truth for colors, border radii, shadows, transitions, and typography. Imported once in `main.ts`, available in every component.
+**Design tokens** in `src/styles/tokens.css` — single source of truth for colors, radii, shadows, transitions, typography. **Shared overlay styles** in `src/styles/overlay.css` — base classes for context menus (`.ol-menu`), confirm dialogs (`.ol-dialog`), inline editor containers (`.ol-inline-edit`), buttons (`.ol-btn`), and the close icon (`.close-icon`). **Shared form styles** in `src/styles/form.css` — form layout (`.form-group`, `.form-row`, `.flex-1`, `.w-70`), labels (`.section-label`, `.group-label`), color grid (`.color-grid`, `.color-swatch`), tags (`.tags-wrap`, `.tag-pill`), icon editor (`.icon-editor`, `.icon-preview`, `.upload-btn`), slot cards (`.slot-card`, `.slot-header`, `.slot-status`), edge/input/relation rows, byproduct picker (`.so-*`), inline number input with stepper (`.rd-input-num`, `.rd-num-btn`, `.rd-num-btn-minus/plus`), empty state (`.no-data`), and Naive UI drawer overrides (`.rd-drawer`). All three imported once in `main.ts`.
 
-**Rule: before writing any hardcoded color, radius, shadow, or transition value in a component `<style>` block, check `tokens.css` first.** If a matching token exists, use the CSS variable. Only hardcode values that are truly one-off and not shared across components.
+**Rule: before writing any hardcoded color, radius, shadow, or transition value in a component `<style>` block, check `tokens.css` first. Before writing form, input, tag, label, or drawer styles, check `form.css` for a reusable class.** If a matching token or class exists, use it instead of duplicating. Only hardcode values that are truly one-off and not shared across components.
 
 Key token categories:
 - **Text:** `--text-primary`, `--text-main`, `--text-muted`, `--text-dimmed`, `--text-disabled`

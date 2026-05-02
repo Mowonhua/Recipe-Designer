@@ -1,5 +1,6 @@
 <template>
   <n-drawer
+    class="rd-drawer"
     :show="bomStore.panelVisible"
     :width="480"
     placement="right"
@@ -28,6 +29,7 @@
               v-model:value="editTargetQty"
               size="small"
               :min="1"
+              @wheel.prevent="(e: WheelEvent) => onNumberWheel(() => editTargetQty, (v) => editTargetQty = v, 1, 1, e)"
             />
           </div>
         </div>
@@ -104,6 +106,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
+import { onNumberWheel } from '../composables/useWheelNumber';
 import {
   NDrawer, NDrawerContent,
   NInputNumber, NSelect, NButton,
@@ -218,27 +221,6 @@ watch(() => bomStore.pendingRequest, (req) => {
   color: var(--text-primary);
 }
 
-.form-group {
-  display: flex;
-  flex-direction: column;
-  margin-bottom: var(--spacing-md);
-}
-
-.form-group label {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 900;
-  text-transform: uppercase;
-  color: var(--text-primary);
-  margin-bottom: var(--spacing-xs);
-}
-
-.form-row {
-  display: flex;
-  gap: var(--spacing-md);
-}
-
-.flex-1 { flex: 1; }
 .w-qty { width: 100px; }
 
 .warnings-block {
@@ -261,17 +243,6 @@ watch(() => bomStore.pendingRequest, (req) => {
 .warn-no_inputs { border-left: 4px solid var(--text-muted); }
 
 .warn-icon { margin-right: 6px; }
-
-.section-label {
-  font-family: var(--font-ui);
-  font-size: 16px;
-  font-weight: 900;
-  color: var(--text-main);
-  text-transform: uppercase;
-  margin-bottom: var(--spacing-md);
-  border-left: var(--border-width-lg) solid var(--accent-amber);
-  padding-left: var(--spacing-sm);
-}
 
 .tree-block, .summary-block {
   margin-bottom: var(--spacing-xl);
@@ -296,45 +267,5 @@ watch(() => bomStore.pendingRequest, (req) => {
   font-size: 11px;
   margin-top: 8px;
   color: var(--text-dimmed);
-}
-
-/* Deep overrides */
-:deep(.n-drawer-content) {
-  border-left: var(--border-width-lg) solid var(--border-default);
-  font-family: var(--font-ui);
-}
-
-:deep(.n-drawer-header) {
-  background: var(--bg-header);
-  border-bottom: var(--border-width-lg) solid var(--border-default);
-}
-
-:deep(.n-drawer-header__title) {
-  font-family: var(--font-mono);
-  font-weight: 900;
-  text-transform: uppercase;
-  font-size: 22px;
-  letter-spacing: -1px;
-}
-
-:deep(.n-drawer) {
-  box-shadow: -8px 0px 0px var(--border-default) !important;
-  --n-body-color: var(--panel-bg);
-  --n-text-color: var(--text-primary);
-  --n-title-text-color: var(--text-primary);
-}
-
-:deep(.n-input-number), :deep(.n-select) {
-  border-radius: var(--radius-sm) !important;
-  border: var(--border-width-md) solid var(--border-default) !important;
-  box-shadow: var(--shadow-node);
-}
-
-:deep(.n-button) {
-  font-family: var(--font-mono);
-  text-transform: uppercase;
-  font-weight: 900;
-  border-radius: var(--radius-sm) !important;
-  margin-top: var(--spacing-sm);
 }
 </style>

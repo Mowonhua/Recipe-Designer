@@ -225,13 +225,20 @@ const activeByproducts = computed(() => {
 }
 .details-btn {
   font-size: 10px; color: var(--accent-link);
-  background: var(--bg-toolbar-btn); border: var(--border-width-sm) solid var(--panel-border);
-  border-radius: var(--radius-sm); padding: 4px 8px;
-  cursor: pointer; white-space: nowrap;
+  background: var(--bg-surface);
+  border: 2px solid var(--border-default);
+  border-radius: var(--radius-2xl);
+  padding: 4px 10px;
+  cursor: pointer;
   font-family: var(--font-ui), sans-serif;
-  transition: background var(--transition-fast), color var(--transition-fast);
+  box-shadow: var(--shadow-card);
+  transition: transform var(--transition-fast) var(--ease-smooth),
+              box-shadow var(--transition-fast) var(--ease-smooth);
 }
-.details-btn:hover { background: var(--bg-toolbar-btn-hover); color: var(--text-primary); }
+.details-btn:hover { 
+  transform: translate(-1px, -1px);
+  box-shadow: 5px 5px 0px var(--bg-surface);
+}
 
 .section-label {
   font-size: 9px; color: var(--text-muted);

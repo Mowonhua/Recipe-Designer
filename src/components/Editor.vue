@@ -80,22 +80,21 @@
       ></div>
       <div
         v-if="edgeEditId"
-        class="ol-inline-edit"
-        :style="{ left: edgeEditX + 'px', top: edgeEditY + 'px' }"
-        @wheel.prevent="onEdgeEditWheel"
+        class="rd-inline-input"
+        :style="{ position: 'absolute', zIndex: 100, left: edgeEditX + 'px', top: edgeEditY + 'px', transform: 'translate(-50%, -50%)' }"
       >
-        <button class="ol-inline-edit-btn ol-inline-edit-btn-minus" @mousedown.prevent="edgeEditStep(-1)">-</button>
-        <input
+        <n-input-number
           ref="edgeEditInputRef"
-          v-model.number="edgeEditQty"
-          class="ol-inline-edit-input"
-          type="text"
-          inputmode="numeric"
+          v-model:value="edgeEditQty"
+          size="tiny"
+          :min="1"
+          :step="1"
+          style="width: 72px"
+          @wheel.prevent="(e: WheelEvent) => onNumberWheel(() => edgeEditQty, (v) => edgeEditQty = v, 1, 1, e)"
           @keydown.enter="commitEdgeEdit()"
           @keydown.escape="cancelEdgeEdit()"
           @blur="commitEdgeEdit()"
         />
-        <button class="ol-inline-edit-btn ol-inline-edit-btn-plus" @mousedown.prevent="edgeEditStep(1)">+</button>
       </div>
     </div>
     <SearchOverlay v-if="showSearch" @close="showSearch = false" />
@@ -119,6 +118,7 @@
 
 <script setup lang="ts">
 import { ref, provide, watch, onMounted, onUnmounted, markRaw, computed, nextTick } from 'vue';
+import { onNumberWheel } from '../composables/useWheelNumber';
 import { VueFlow, useVueFlow } from '@vue-flow/core';
 import { Background } from '@vue-flow/background';
 import { Controls } from '@vue-flow/controls';
@@ -146,7 +146,7 @@ import ContextMenu from './ContextMenu.vue';
 import type { ContextMenuItem } from './ContextMenu.vue';
 import { useBomStore } from '../store/bom-store';
 import { Settings } from 'lucide-vue-next';
-import { NModal, NSelect } from 'naive-ui';
+import { NModal, NSelect, NInputNumber } from 'naive-ui';
 import { supportedLocales, setLocale } from '../locales';
 
 const { t } = useI18n();
@@ -792,7 +792,7 @@ const edgeEditId = ref<string | null>(null);
 const edgeEditQty = ref(1);
 const edgeEditX = ref(0);
 const edgeEditY = ref(0);
-const edgeEditInputRef = ref<HTMLInputElement | null>(null);
+const edgeEditInputRef = ref<InstanceType<typeof NInputNumber> | null>(null);
 
 function onEdgeDoubleClick(event: EdgeMouseEvent) {
   const edgeId = event.edge.id as string;
@@ -807,8 +807,9 @@ function onEdgeDoubleClick(event: EdgeMouseEvent) {
     edgeEditY.value = me.clientY - rect.top;
   }
   nextTick(() => {
-    edgeEditInputRef.value?.focus();
-    edgeEditInputRef.value?.select();
+    const input = edgeEditInputRef.value?.$el?.querySelector('input') as HTMLInputElement | null;
+    input?.focus();
+    input?.select();
   });
 }
 
@@ -821,13 +822,6 @@ function commitEdgeEdit() {
   edgeEditId.value = null;
 }
 
-function edgeEditStep(delta: number) {
-  edgeEditQty.value = Math.max(1, edgeEditQty.value + delta);
-}
-
-function onEdgeEditWheel(e: WheelEvent) {
-  edgeEditQty.value = Math.max(1, edgeEditQty.value + (e.deltaY > 0 ? -1 : 1));
-}
 
 function cancelEdgeEdit() {
   edgeEditId.value = null;

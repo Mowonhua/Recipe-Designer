@@ -1,5 +1,6 @@
 <template>
   <n-drawer
+    class="rd-drawer"
     :show="visible"
     :width="420"
     placement="right"
@@ -87,13 +88,15 @@
               </div>
               <div class="form-group w-70">
                 <label>{{ $t('drawer.time') }}</label>
-                <n-input-number v-model:value="editSlots[slot.id].time" size="small" :min="0.1" :step="0.1" />
+                <n-input-number v-model:value="editSlots[slot.id].time" size="small" :min="0.1" :step="0.1"
+                  @wheel.prevent="(e: WheelEvent) => onNumberWheel(() => editSlots[slot.id].time, (v) => editSlots[slot.id].time = v, 0.1, 0.1, e)" />
               </div>
             </div>
             <div class="form-row">
               <div class="form-group flex-1">
                 <label>{{ $t('drawer.quantity') }}</label>
-                <n-input-number v-model:value="editSlots[slot.id].primary_output_quantity" size="small" :min="1" />
+                <n-input-number v-model:value="editSlots[slot.id].primary_output_quantity" size="small" :min="1"
+                  @wheel.prevent="(e: WheelEvent) => onNumberWheel(() => editSlots[slot.id].primary_output_quantity, (v) => editSlots[slot.id].primary_output_quantity = v, 1, 1, e)" />
               </div>
               <div class="form-group flex-1">
                 <label>{{ $t('drawer.machine') }}</label>
@@ -144,13 +147,15 @@
                 </div>
                 <div class="form-group w-70">
                   <label>{{ $t('drawer.catalystQuantity') }}</label>
-                  <n-input-number v-model:value="editSlots[slot.id].catalyst_quantity" size="small" :min="1" />
+                  <n-input-number v-model:value="editSlots[slot.id].catalyst_quantity" size="small" :min="1"
+                    @wheel.prevent="(e: WheelEvent) => onNumberWheel(() => editSlots[slot.id].catalyst_quantity, (v) => editSlots[slot.id].catalyst_quantity = v, 1, 1, e)" />
                 </div>
               </div>
               <div class="form-row">
                 <div class="form-group w-70">
                   <label>{{ $t('drawer.catalystSpeedMultiplier') }}</label>
-                  <n-input-number v-model:value="editSlots[slot.id].catalyst_speed_multiplier" size="small" :min="0.1" :step="0.1" />
+                  <n-input-number v-model:value="editSlots[slot.id].catalyst_speed_multiplier" size="small" :min="0.1" :step="0.1"
+                    @wheel.prevent="(e: WheelEvent) => onNumberWheel(() => editSlots[slot.id].catalyst_speed_multiplier, (v) => editSlots[slot.id].catalyst_speed_multiplier = v, 0.1, 0.1, e)" />
                 </div>
               </div>
             </div>
@@ -237,6 +242,7 @@
                 size="tiny"
                 :min="1"
                 style="width: 80px"
+                @wheel.prevent="(e: WheelEvent) => onNumberWheel(() => edgeQtys[edge.id], (v) => edgeQtys[edge.id] = v, 1, 1, e)"
                 @update:value="(v: number | null) => updateEdgeQty(edge.id, v || 1)"
               />
               <n-button text size="tiny" type="error" @click="deleteEdgeById(edge.id)"><span class="close-icon"></span></n-button>
@@ -291,6 +297,7 @@ import { useI18n } from 'vue-i18n';
 import { useStore } from '../store';
 import type { ItemNode, RecipeSlot, FlowEdge } from '../store';
 import ConfirmDialog from './ConfirmDialog.vue';
+import { onNumberWheel } from '../composables/useWheelNumber';
 
 const { t } = useI18n();
 
@@ -775,32 +782,81 @@ function flyTo(nodeId: string) {
 </script>
 
 <style scoped>
-.form-group {
-  margin-bottom: var(--spacing-lg);
-  display: flex;
-  flex-direction: column;
-  position: relative;
-}
-.form-group label {
-  font-family: var(--font-mono);
-  font-size: 12px;
-  font-weight: 900;
-  text-transform: uppercase;
-  color: var(--text-primary);
-  display: inline-flex;
-  align-items: center;
-  margin-bottom: var(--spacing-xs);
-  letter-spacing: 1px;
-}
-.form-group label::before {
-  content: '';
-  display: inline-block;
-  width: 8px;
-  height: 8px;
-  background: var(--text-primary);
-  margin-right: var(--spacing-sm);
+/* ---- Color grid ---- */
+.color-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(32px, 1fr));
+  gap: var(--spacing-sm);
+  background: var(--bg-deep);
+  border: var(--border-width-md) solid var(--border-default);
+  padding: var(--spacing-sm);
+  box-shadow: var(--shadow-inset-panel);
 }
 
+.color-swatch {
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: var(--radius-full);
+  border: var(--border-width-md) solid transparent;
+  cursor: pointer;
+  transition: transform var(--transition-normal), border-color var(--transition-fast), border-radius var(--transition-slow);
+}
+
+.color-swatch:hover {
+  transform: scale(1.1);
+  border-radius: var(--radius-sm);
+}
+
+.color-swatch.selected {
+  border-color: var(--border-default);
+  border-radius: var(--radius-sm);
+  box-shadow: 4px 4px 0px var(--border-default);
+}
+
+/* ---- Tags ---- */
+.tags-wrap {
+  display: flex;
+  gap: var(--spacing-sm);
+  flex-wrap: wrap;
+  align-items: center;
+  background: var(--bg-input);
+  border: var(--border-width-md) solid var(--border-default);
+  padding: var(--spacing-sm);
+  min-height: 48px;
+}
+
+.tag-pill {
+  background: var(--text-primary);
+  color: var(--bg-color);
+  font-family: var(--font-mono);
+  font-weight: 800;
+  font-size: 11px;
+  text-transform: uppercase;
+  padding: 4px 8px;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  border-radius: var(--radius-sm);
+}
+
+.tag-pill.small { padding: 2px 6px; font-size: 10px; }
+
+.tag-remove { cursor: pointer; margin-left: 4px; font-size: 12px; }
+.tag-remove:hover { transform: scale(1.2); }
+
+.tag-input-inline,
+.tag-input-native {
+  border: none;
+  background: transparent;
+  outline: none;
+  font-family: var(--font-mono);
+  color: var(--text-primary);
+  font-weight: 700;
+  font-size: 12px;
+  width: 90px;
+}
+
+/* ---- Icon editor ---- */
 .icon-editor {
   display: flex;
   align-items: center;
@@ -859,85 +915,7 @@ function flyTo(nodeId: string) {
   justify-content: center;
 }
 
-.form-row {
-  display: flex;
-  gap: var(--spacing-md);
-  margin-bottom: var(--spacing-md);
-}
-
-.flex-1 { flex: 1; }
-.w-70 { width: 90px; }
-
-.color-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(32px, 1fr));
-  gap: var(--spacing-sm);
-  background: var(--bg-deep);
-  border: var(--border-width-md) solid var(--border-default);
-  padding: var(--spacing-sm);
-  box-shadow: var(--shadow-inset-panel);
-}
-
-.color-swatch {
-  width: 100%;
-  aspect-ratio: 1;
-  border-radius: var(--radius-full);
-  border: var(--border-width-md) solid transparent;
-  cursor: pointer;
-  transition: transform var(--transition-normal), border-color var(--transition-fast), border-radius var(--transition-slow);
-}
-
-.color-swatch:hover {
-  transform: scale(1.1);
-  border-radius: var(--radius-sm);
-}
-
-.color-swatch.selected {
-  border-color: var(--border-default);
-  border-radius: var(--radius-sm);
-  box-shadow: 4px 4px 0px var(--border-default);
-}
-
-.tags-wrap {
-  display: flex;
-  gap: var(--spacing-sm);
-  flex-wrap: wrap;
-  align-items: center;
-  background: var(--bg-input);
-  border: var(--border-width-md) solid var(--border-default);
-  padding: var(--spacing-sm);
-  min-height: 48px;
-}
-
-.tag-pill {
-  background: var(--text-primary);
-  color: var(--bg-color);
-  font-family: var(--font-mono);
-  font-weight: 800;
-  font-size: 11px;
-  text-transform: uppercase;
-  padding: 4px 8px;
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-sm);
-  border-radius: var(--radius-sm);
-}
-
-.tag-pill.small { padding: 2px 6px; font-size: 10px; }
-.tag-remove { cursor: pointer; margin-left: 4px; font-size: 12px; }
-.tag-remove:hover { transform: scale(1.2); }
-
-.tag-input-inline, .tag-input-native {
-  border: none;
-  background: transparent;
-  outline: none;
-  font-family: var(--font-mono);
-  color: var(--text-primary);
-  font-weight: 700;
-  font-size: 12px;
-  width: 90px;
-}
-
+/* ---- Slot cards ---- */
 .slot-card {
   background: var(--bg-surface);
   border: var(--border-width-md) solid var(--border-default);
@@ -956,7 +934,8 @@ function flyTo(nodeId: string) {
 .slot-card::before {
   content: '';
   position: absolute;
-  top: 0; left: 0;
+  top: 0;
+  left: 0;
   width: 12px;
   height: 100%;
   background: var(--accent-blue);
@@ -985,32 +964,7 @@ function flyTo(nodeId: string) {
   padding: 4px 8px;
 }
 
-.input-group, .relation-row {
-  background: var(--bg-surface);
-  border: var(--border-width-md) solid var(--border-default);
-  padding: var(--spacing-sm) var(--spacing-md);
-  margin-bottom: var(--spacing-sm);
-  display: flex;
-  gap: 8px;
-}
-.input-group {
-  flex-direction: column;
-  align-items: stretch;
-  gap: var(--spacing-sm);
-}
-
-.group-label, .section-label {
-  font-family: var(--font-ui);
-  font-size: 18px;
-  font-weight: 900;
-  color: var(--text-main);
-  text-transform: uppercase;
-  margin-bottom: var(--spacing-sm);
-  border-left: var(--border-width-lg) solid var(--accent-amber);
-  padding-left: var(--spacing-sm);
-  letter-spacing: -0.5px;
-}
-
+/* ---- Edge rows ---- */
 .edge-row {
   display: flex;
   align-items: center;
@@ -1023,7 +977,7 @@ function flyTo(nodeId: string) {
   border-bottom: none;
 }
 
-.edge-source, .relation-name {
+.edge-source {
   flex: 1;
   font-family: var(--font-mono);
   font-size: 13px;
@@ -1034,18 +988,43 @@ function flyTo(nodeId: string) {
   word-break: normal;
 }
 
+/* ---- Input groups ---- */
+.input-group {
+  background: var(--bg-surface);
+  border: var(--border-width-md) solid var(--border-default);
+  padding: var(--spacing-sm) var(--spacing-md);
+  margin-bottom: var(--spacing-sm);
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--spacing-sm);
+  display: flex;
+}
+
+/* ---- Relation rows ---- */
 .relation-row {
+  background: var(--bg-surface);
+  border: var(--border-width-md) solid var(--border-default);
+  padding: var(--spacing-sm) var(--spacing-md);
+  margin-bottom: var(--spacing-sm);
+  display: flex;
+  gap: 8px;
   cursor: pointer;
   transition: background var(--transition-fast);
 }
+
 .relation-row:hover {
   background: var(--bg-hover);
 }
 
-.io-dot {
-  width: 16px; height: 16px;
-  border: var(--border-width-md) solid var(--border-default);
-  border-radius: var(--radius-sm);
+.relation-name {
+  flex: 1;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 800;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  word-break: normal;
 }
 
 .relation-qty {
@@ -1054,6 +1033,14 @@ function flyTo(nodeId: string) {
   font-weight: 900;
 }
 
+.io-dot {
+  width: 16px;
+  height: 16px;
+  border: var(--border-width-md) solid var(--border-default);
+  border-radius: var(--radius-sm);
+}
+
+/* ---- Empty state ---- */
 .no-data {
   font-family: var(--font-mono);
   font-size: 12px;
@@ -1064,312 +1051,5 @@ function flyTo(nodeId: string) {
   border: var(--border-width-md) dashed var(--border-default);
   text-align: center;
   font-weight: 800;
-}
-
-/* Deep Naive UI Overrides */
-:deep(.n-drawer-content) {
-  border-left: var(--border-width-lg) solid var(--border-default);
-  font-family: var(--font-ui);
-}
-
-:deep(.n-drawer-header) {
-  background: var(--bg-header);
-  border-bottom: var(--border-width-lg) solid var(--border-default);
-  position: relative;
-  overflow: hidden;
-}
-
-:deep(.n-drawer-header__title) {
-  font-family: var(--font-mono);
-  font-weight: 900;
-  text-transform: uppercase;
-  font-size: 22px;
-  letter-spacing: -1px;
-}
-
-:deep(.n-tabs-nav) {
-  border-bottom: var(--border-width-md) solid var(--border-default) !important;
-  background: transparent;
-}
-
-:deep(.n-tabs-nav-scroll-wrapper) {
-  padding-inline: var(--spacing-md);
-  box-sizing: border-box;
-  padding-inline: 12px;
-}
-
-:deep(.n-tabs-nav-scroll-content) {
-  padding-inline: 0;
-}
-
-:deep(.n-tabs-tab) {
-  font-family: var(--font-mono);
-  font-size: 13px;
-  font-weight: 900;
-  text-transform: uppercase;
-}
-
-:deep(.n-input), :deep(.n-select) {
-  border-radius: var(--radius-sm) !important;
-  border: var(--border-width-md) solid var(--border-default) !important;
-  --n-border: none !important;
-  --n-border-focus: none !important;
-  --n-border-hover: none !important;
-  --n-border-active: none !important;
-  --n-box-shadow-focus: none !important;
-  box-shadow: var(--shadow-node);
-  transition: transform var(--transition-fast), box-shadow var(--transition-fast) !important;
-}
-
-:deep(.n-input:hover), :deep(.n-input:focus-within),
-:deep(.n-select:hover), :deep(.n-select:focus-within) {
-  box-shadow: 4px 4px 0px var(--border-default) !important;
-  transform: translate(-2px, -2px);
-}
-
-:deep(.n-button) {
-  font-family: var(--font-mono);
-  text-transform: uppercase;
-  font-weight: 900;
-  border-radius: var(--radius-sm) !important;
-  transition: transform var(--transition-fast), box-shadow var(--transition-fast) !important;
-}
-
-:deep(.n-button:hover) {
-  transform: translate(-3px, -3px);
-}
-
-:deep(.n-button:active) {
-  transform: translate(2px, 2px);
-}
-
-:deep(.n-drawer) {
-  box-shadow: -8px 0px 0px var(--border-default) !important;
-  border-radius: var(--radius-sm) !important;
-  --n-body-color: var(--panel-bg);
-  --n-text-color: var(--text-primary);
-  --n-title-text-color: var(--text-primary);
-  --n-close-icon-color: var(--text-primary);
-  --n-close-icon-color-hover: var(--accent-red);
-}
-
-:deep(.n-drawer-container) {
-  transition: transform var(--transition-slow) var(--ease-bounce) !important;
-}
-
-/* ---- Byproduct Cards ---- */
-.so-list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-sm);
-  position: relative;
-}
-
-.so-card {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-sm);
-  border: var(--border-width-md) solid var(--border-default);
-  padding: var(--spacing-xs) var(--spacing-sm);
-  background: var(--bg-surface);
-  box-shadow: var(--shadow-node);
-  transition: box-shadow var(--transition-fast), transform var(--transition-fast);
-}
-
-.so-card:hover {
-  box-shadow: var(--shadow-node-hover);
-  transform: translate(-1px, -1px);
-}
-
-.so-card-name {
-  flex: 1;
-  font-family: var(--font-mono);
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--text-primary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  min-width: 0;
-}
-
-.so-card-divider {
-  width: 1px;
-  height: 18px;
-  background: var(--border-default);
-  flex-shrink: 0;
-  align-self: center;
-}
-
-.so-card-qty {
-  font-family: var(--font-mono);
-  font-size: 13px;
-  font-weight: 800;
-  color: var(--text-primary);
-  cursor: pointer;
-  min-width: 28px;
-  text-align: center;
-  padding: 2px 4px;
-  border: var(--border-width-sm) solid transparent;
-  transition: border-color var(--transition-fast), background var(--transition-fast);
-  flex-shrink: 0;
-}
-
-.so-card-qty:hover {
-  border-color: var(--border-default);
-  background: var(--bg-input);
-}
-
-.so-qty-input {
-  width: 52px;
-  font-family: var(--font-mono);
-  font-size: 13px;
-  font-weight: 800;
-  text-align: center;
-  color: var(--text-primary);
-  border: var(--border-width-md) solid var(--accent-blue);
-  background: var(--bg-input);
-  outline: none;
-  padding: 2px 4px;
-  box-shadow: var(--shadow-node);
-  -moz-appearance: textfield;
-}
-
-.so-qty-input::-webkit-outer-spin-button,
-.so-qty-input::-webkit-inner-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
-}
-
-.so-card-remove {
-  cursor: pointer;
-  font-size: 12px;
-  flex-shrink: 0;
-  padding: 0 4px;
-  transition: transform var(--transition-fast);
-}
-
-.so-card-remove:hover {
-  transform: scale(1.3);
-}
-
-/* Add byproduct card (dashed border) */
-.so-card-add {
-  border-style: dashed;
-  cursor: pointer;
-  opacity: 0.7;
-  transition: opacity var(--transition-fast), border-color var(--transition-fast), box-shadow var(--transition-fast);
-}
-
-.so-card-add:hover,
-.so-card-add.open {
-  opacity: 1;
-  border-color: var(--accent-blue);
-  box-shadow: var(--shadow-node-hover);
-}
-
-.so-add-plus {
-  font-weight: 900;
-  font-size: 14px;
-  color: var(--text-muted);
-}
-
-.so-add-label {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--text-muted);
-}
-
-/* ---- Byproduct Picker Popup (ol-menu style) ---- */
-.so-picker-wrapper {
-  position: absolute;
-  bottom: 100%;
-  left: 0;
-  right: 0;
-  margin-bottom: var(--spacing-xs);
-  background: var(--panel-bg);
-  border: var(--border-width-md) solid var(--border-default);
-  box-shadow: var(--shadow-modal);
-  z-index: 100;
-  max-height: 360px;
-  display: flex;
-  flex-direction: column;
-}
-
-.so-picker-search {
-  padding: var(--spacing-sm);
-  border-bottom: var(--border-width-md) solid var(--border-default);
-  flex-shrink: 0;
-}
-
-.so-picker-input {
-  width: 100%;
-  padding: 8px 10px;
-  font-family: var(--font-mono);
-  font-size: 12px;
-  font-weight: 700;
-  border: var(--border-width-md) solid var(--border-default);
-  background: var(--bg-input);
-  color: var(--text-primary);
-  outline: none;
-  box-sizing: border-box;
-  box-shadow: var(--shadow-inset-soft);
-}
-
-.so-picker-input:focus {
-  border-color: var(--accent-blue);
-}
-
-.so-picker-list {
-  overflow-y: auto;
-  flex: 1;
-}
-
-.so-picker-item {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-sm);
-  padding: 8px 12px;
-  cursor: pointer;
-  border-bottom: var(--border-width-sm) solid var(--border-subtle);
-  font-family: var(--font-ui);
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--text-primary);
-  transition: background var(--transition-fast), padding-left var(--transition-fast);
-}
-
-.so-picker-item:last-child {
-  border-bottom: none;
-}
-
-.so-picker-item:hover {
-  background: var(--bg-hover);
-  padding-left: 18px;
-}
-
-.so-picker-dot {
-  width: 10px;
-  height: 10px;
-  border: var(--border-width-sm) solid var(--border-default);
-  flex-shrink: 0;
-}
-
-.so-picker-name {
-  flex: 1;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.so-picker-empty {
-  padding: 20px 16px;
-  text-align: center;
-  font-family: var(--font-mono);
-  font-size: 12px;
-  font-weight: 800;
-  color: var(--text-muted);
-  text-transform: uppercase;
 }
 </style>

@@ -104,18 +104,17 @@
             />
             <div class="form-row">
               <label class="speed-label">{{ $t('dict.speed') }}</label>
-              <div class="speed-edit-group" @wheel.prevent="onSpeedWheel">
-                <button class="speed-edit-btn speed-edit-down" @mousedown.prevent="speedStep(-0.25)">-</button>
-                <input
-                  v-model.number="editMachineSpeedValue"
-                  type="text"
-                  inputmode="decimal"
-                  class="speed-edit-input"
-                  @keydown.enter="saveMachineEdit"
-                  @keydown.escape="cancelMachineEdit"
-                />
-                <button class="speed-edit-btn speed-edit-up" @mousedown.prevent="speedStep(0.25)">+</button>
-              </div>
+              <n-input-number
+                v-model:value="editMachineSpeedValue"
+                size="tiny"
+                :min="0.25"
+                :step="0.25"
+                class="rd-inline-input"
+                style="width: 90px;"
+                @wheel.prevent="(e: WheelEvent) => onNumberWheel(() => editMachineSpeedValue, (v) => editMachineSpeedValue = v, 0.25, 0.25, e)"
+                @keydown.enter="saveMachineEdit"
+                @keydown.escape="cancelMachineEdit"
+              />
             </div>
             <div class="form-actions">
               <button class="form-btn confirm" @click="saveMachineEdit" :disabled="!editMachineNameValue.trim()">{{ $t('dict.save') }}</button>
@@ -213,6 +212,8 @@
 import { ref, computed, nextTick, onMounted, onUnmounted } from 'vue';
 import { v4 as uuidv4 } from 'uuid';
 import { useI18n } from 'vue-i18n';
+import { NInputNumber } from 'naive-ui';
+import { onNumberWheel } from '../composables/useWheelNumber';
 import { useStore, type ItemNode, type Machine } from '../store';
 import ConfirmDialog from './ConfirmDialog.vue';
 
@@ -372,14 +373,6 @@ function saveMachineEdit() {
 
 function cancelMachineEdit() {
   editingMachineId.value = null;
-}
-
-function speedStep(delta: number) {
-  editMachineSpeedValue.value = Math.max(0.25, +(editMachineSpeedValue.value + delta).toFixed(2));
-}
-
-function onSpeedWheel(e: WheelEvent) {
-  editMachineSpeedValue.value = Math.max(0.25, +(editMachineSpeedValue.value + (e.deltaY > 0 ? -0.25 : 0.25)).toFixed(2));
 }
 
 function deleteMachineById(machineId: string) {
@@ -788,71 +781,6 @@ onUnmounted(() => window.removeEventListener('keydown', onKeyDown));
   font-weight: 800;
   text-transform: uppercase;
   color: var(--text-primary);
-}
-
-.speed-edit-group {
-  display: flex;
-  align-items: center;
-  border: 2px solid var(--border-default);
-  border-radius: var(--radius-sm);
-  box-shadow: 2px 2px 0px var(--text-primary);
-  background: var(--bg-color);
-}
-.speed-edit-group:focus-within {
-  border-color: var(--accent-blue);
-}
-.speed-edit-input {
-  width: 48px;
-  height: 24px;
-  padding: 0 2px;
-  margin: 0;
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--text-primary);
-  background: transparent;
-  border: none;
-  text-align: center;
-  outline: none;
-  -moz-appearance: textfield;
-}
-.speed-edit-input::-webkit-outer-spin-button,
-.speed-edit-input::-webkit-inner-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
-}
-.speed-edit-btn {
-  width: 18px;
-  height: 24px;
-  padding: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-family: var(--font-mono);
-  font-size: 13px;
-  font-weight: 800;
-  color: var(--text-muted);
-  background: var(--bg-surface);
-  border: none;
-  border-radius: 0;
-  cursor: pointer;
-  transition: color var(--transition-fast), background var(--transition-fast);
-  outline: none;
-  user-select: none;
-}
-.speed-edit-btn:hover {
-  color: var(--text-primary);
-  background: var(--bg-hover);
-}
-.speed-edit-btn:active {
-  color: var(--accent-blue);
-  background: var(--bg-deep);
-}
-.speed-edit-down {
-  border-right: 2px solid var(--border-default);
-}
-.speed-edit-up {
-  border-left: 2px solid var(--border-default);
 }
 
 .form-actions {
