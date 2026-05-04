@@ -1,4 +1,4 @@
-import type { State, ItemNode, RecipeSlot } from '../store';
+import type { State, ItemNode, RecipeSlot, Proliferator } from '../store';
 import type {
   BomRequest, BomResult, BomTreeNode, BomTreeEdge,
   BomByproduct, BomSummaryRow, BomWarning, ByproductStrategy,
@@ -65,8 +65,10 @@ function computeOneTime(
   }
   visited.add(visitKey);
 
-  const executionCount = Math.ceil(request.targetQuantity / slot.primary_output_quantity);
-  const totalProduced = executionCount * slot.primary_output_quantity;
+  const assignedProliferator = getAssignedProliferator(state, request, slot);
+  const outputPerExecution = slot.primary_output_quantity * (assignedProliferator?.multiplier ?? 1);
+  const executionCount = Math.ceil(request.targetQuantity / outputPerExecution);
+  const totalProduced = executionCount * outputPerExecution;
   const isSurplus = totalProduced > request.targetQuantity;
   const surplusPercent = isSurplus
     ? ((totalProduced - request.targetQuantity) / totalProduced) * 100
@@ -123,6 +125,10 @@ function computeOneTime(
       isCatalyst: true,
     };
   }
+
+  const proliferator = assignedProliferator && !isCatalystBlocked
+    ? makeProliferatorEdge(state, assignedProliferator, executionCount * assignedProliferator.consumption_per_cycle)
+    : undefined;
 
   const byproducts = isCatalystBlocked
     ? []
@@ -183,6 +189,7 @@ function computeOneTime(
     inputs,
     byproducts,
     catalyst,
+    proliferator,
     isRawMaterial: false,
     isByproduct: false,
     isSurplus,
@@ -217,7 +224,8 @@ function computeContinuous(
   }
   visited.add(visitKey);
 
-  const { yieldMultiplier, speedMultiplier } = computeMultipliers(state, slot);
+  const assignedProliferator = getAssignedProliferator(state, request, slot);
+  const { yieldMultiplier, speedMultiplier } = computeMultipliers(state, slot, assignedProliferator?.multiplier ?? 1);
 
   // All quantities in items/second internally; targetQuantity is items/minute from user
   const targetRatePerSec = request.targetQuantity / 60;
@@ -248,8 +256,6 @@ function computeContinuous(
     const sourceNode = state.nodes.find(n => n.id === edge.source);
     // Consumption rate in items/min
     const consumptionRatePerMin = (machineCount * edge.quantity / actualTimePerCycleSec) * 60;
-    const consumptionRatePerSec = consumptionRatePerMin / 60;
-
     let child: BomTreeNode | null = null;
     if (sourceNode && !isRawOrAutoRaw(state, sourceNode) && !isCatalystBlocked) {
       const activeSlot = getActiveSlot(sourceNode);
@@ -298,6 +304,10 @@ function computeContinuous(
     ? []
     : collectByproductsContinuous(state, slot, cyclesPerMin, request.byproductStrategy, accumulator);
 
+  const proliferatorC = assignedProliferator && !isCatalystBlocked
+    ? makeProliferatorEdge(state, assignedProliferator, cyclesPerMin * assignedProliferator.consumption_per_cycle)
+    : undefined;
+
   if (isCatalystBlocked) {
     warnings.push({ type: 'catalyst_missing', nodeId: node.id, message: t('bomWarnings.catalystMissing', { slotName: slot.name, nodeName: node.name }) });
   }
@@ -317,6 +327,7 @@ function computeContinuous(
     inputs,
     byproducts,
     catalyst: catalystC,
+    proliferator: proliferatorC,
     isRawMaterial: false,
     isByproduct: false,
     isSurplus,
@@ -347,7 +358,6 @@ function collectSummary(node: BomTreeNode, request: BomRequest, map: Map<string,
     } else {
       // Raw material leaf: add from edge info
       const isBpLeaf = edge.isByproduct === true;
-      const rawNode = state.nodes.find(n => n.id === edge.sourceNodeId);
       const existing = map.get(edge.sourceNodeId);
       if (existing) {
         if (request.mode === 'one-time') {
@@ -385,6 +395,10 @@ function collectSummary(node: BomTreeNode, request: BomRequest, map: Map<string,
   // Collect catalyst from this node
   if (node.catalyst) {
     addCatalystToSummary(node.catalyst, request, map);
+  }
+
+  if (node.proliferator) {
+    addProliferatorToSummary(node.proliferator, request, map);
   }
 }
 
@@ -464,6 +478,30 @@ function addCatalystToSummary(edge: BomTreeEdge, request: BomRequest, map: Map<s
   }
 }
 
+function addProliferatorToSummary(edge: BomTreeEdge, request: BomRequest, map: Map<string, BomSummaryRow>): void {
+  const existing = map.get(edge.sourceNodeId);
+  if (existing) {
+    if (request.mode === 'one-time') {
+      existing.totalQuantity = (existing.totalQuantity || 0) + edge.quantity;
+    } else {
+      existing.totalRate = (existing.totalRate || 0) + edge.quantity;
+    }
+    existing.isProliferator = true;
+  } else {
+    map.set(edge.sourceNodeId, {
+      itemId: edge.sourceNodeId,
+      itemName: edge.sourceNodeName,
+      itemColor: edge.sourceNodeColor,
+      totalQuantity: request.mode === 'one-time' ? edge.quantity : undefined,
+      totalRate: request.mode === 'continuous' ? edge.quantity : undefined,
+      isRawMaterial: false,
+      isByproduct: false,
+      isProliferator: true,
+      isSurplus: false,
+    });
+  }
+}
+
 // --- Helpers ---
 
 function makeCycleNode(node: ItemNode, slot: RecipeSlot, depth: number): BomTreeNode {
@@ -501,6 +539,33 @@ function getActiveSlot(node: ItemNode): RecipeSlot | undefined {
     return node.slots.find(s => s.id === node.active_slot_id);
   }
   return node.slots[0];
+}
+
+function getAssignedProliferator(
+  state: State,
+  request: BomRequest,
+  slot: RecipeSlot,
+): Proliferator | undefined {
+  const proliferatorId = request.proliferatorAssignments?.[slot.machine_id];
+  if (!proliferatorId) return undefined;
+  return state.proliferators.find(p => p.id === proliferatorId);
+}
+
+function makeProliferatorEdge(
+  state: State,
+  proliferator: Proliferator,
+  quantity: number,
+): BomTreeEdge {
+  const item = state.nodes.find(n => n.id === proliferator.item_id);
+  return {
+    edgeId: `proliferator-${proliferator.id}`,
+    sourceNodeId: proliferator.item_id,
+    sourceNodeName: item?.name || proliferator.item_id,
+    sourceNodeColor: item?.color || '#64748b',
+    quantity,
+    child: null,
+    isProliferator: true,
+  };
 }
 
 function collectByproductsContinuous(

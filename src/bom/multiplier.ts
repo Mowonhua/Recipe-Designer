@@ -1,4 +1,4 @@
-import type { State, RecipeSlot, Machine } from '../store';
+import type { State, RecipeSlot } from '../store';
 import type { MultiplierSet } from './types';
 
 export function computeMultipliers(
@@ -13,6 +13,7 @@ export function computeMultipliers(
   const allTags = new Set([...slot.tags, ...machine.tags]);
   let yieldAdditive = 0;
   for (const effect of state.global_effects) {
+    if (effect.enabled === false) continue;
     if (effect.type === 'recipe_yield' && effect.target_tags.some(t => allTags.has(t))) {
       yieldAdditive += effect.multiplier - 1;
     }
@@ -24,6 +25,7 @@ export function computeMultipliers(
   const machineTags = new Set(machine.tags);
   let speedAdditive = 0;
   for (const effect of state.global_effects) {
+    if (effect.enabled === false) continue;
     if (effect.type === 'machine_speed' && effect.target_tags.some(t => machineTags.has(t))) {
       speedAdditive += effect.multiplier - 1;
     }

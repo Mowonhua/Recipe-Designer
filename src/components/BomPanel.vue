@@ -54,6 +54,31 @@
           />
         </div>
 
+        <div class="proliferator-config">
+          <div class="form-group">
+            <label>{{ $t('bom.proliferatorConfig') }}</label>
+            <n-select
+              v-model:value="editProliferatorsEnabled"
+              :options="proliferatorEnabledOptions"
+              size="small"
+            />
+          </div>
+          <div v-if="editProliferatorsEnabled === 'enabled'" class="machine-proliferator-list">
+            <div v-if="involvedMachines.length === 0" class="machine-proliferator-empty">
+              {{ $t('bom.noMachinesForProliferators') }}
+            </div>
+            <div v-for="machine in involvedMachines" :key="machine.id" class="machine-proliferator-row">
+              <span>{{ machine.name }}</span>
+              <n-select
+                :value="editProliferatorAssignments[machine.id] || ''"
+                :options="proliferatorOptions"
+                size="small"
+                @update:value="(value: string) => setProliferatorAssignment(machine.id, value)"
+              />
+            </div>
+          </div>
+        </div>
+
         <n-button type="primary" size="small" block @click="runCalculation" :loading="bomStore.isCalculating">
           {{ $t('bom.calculate') }}
         </n-button>
@@ -114,7 +139,7 @@ import {
 import { useI18n } from 'vue-i18n';
 import { useBomStore } from '../store/bom-store';
 import { useStore } from '../store';
-import type { CalculationMode, BalancingStrategy, ByproductStrategy, BomWarning } from '../bom';
+import type { CalculationMode, BalancingStrategy, ByproductStrategy, BomTreeNode, BomWarning } from '../bom';
 import BomTreeNodeView from './BomTreeNodeView.vue';
 import BomSummaryTable from './BomSummaryTable.vue';
 
@@ -126,6 +151,8 @@ const editMode = ref<CalculationMode>('one-time');
 const editTargetQty = ref(10);
 const editBalancing = ref<BalancingStrategy>('integer-rounding');
 const editByproduct = ref<ByproductStrategy>('ignore-annotate');
+const editProliferatorsEnabled = ref<'disabled' | 'enabled'>('disabled');
+const editProliferatorAssignments = ref<Record<string, string>>({});
 
 const modeOptions = computed(() => [
   { label: t('bom.modeOneTime'), value: 'one-time' as const },
@@ -140,6 +167,17 @@ const byproductOptions = computed(() => [
   { label: t('bom.byproductOffset'), value: 'offset' as const },
   { label: t('bom.byproductIndependent'), value: 'independent-output' as const },
 ]);
+const proliferatorEnabledOptions = computed(() => [
+  { label: t('bom.proliferatorsDisabled'), value: 'disabled' },
+  { label: t('bom.proliferatorsEnabled'), value: 'enabled' },
+]);
+const proliferatorOptions = computed(() => [
+  { label: t('bom.noProliferator'), value: '' },
+  ...store.proliferators.map(proliferator => ({
+    label: `${itemName(proliferator.item_id)} x${formatNumber(proliferator.multiplier)}`,
+    value: proliferator.id,
+  })),
+]);
 
 const targetNodeName = computed(() => {
   const req = bomStore.pendingRequest;
@@ -150,6 +188,30 @@ const targetNodeName = computed(() => {
 
 const result = computed(() => bomStore.activeResult);
 const warnings = computed(() => result.value?.warnings || []);
+const involvedMachines = computed(() => {
+  const ids = new Set<string>();
+
+  function visit(nodeId: string, slotId: string | undefined) {
+    const node = store.nodes.find(n => n.id === nodeId);
+    const slot = node?.slots.find(s => s.id === slotId);
+    if (slot?.machine_id) ids.add(slot.machine_id);
+  }
+
+  function walk(node: BomTreeNode) {
+    visit(node.nodeId, node.slotId);
+    for (const edge of node.inputs) {
+      if (edge.child) walk(edge.child);
+    }
+  }
+
+  if (result.value?.tree) {
+    walk(result.value.tree);
+  } else if (bomStore.pendingRequest) {
+    visit(bomStore.pendingRequest.nodeId, bomStore.pendingRequest.slotId);
+  }
+
+  return store.machines.filter(machine => ids.has(machine.id));
+});
 
 function warnIcon(type: BomWarning['type']): string {
   switch (type) {
@@ -163,18 +225,39 @@ function warnIcon(type: BomWarning['type']): string {
 function runCalculation() {
   const req = bomStore.pendingRequest;
   if (!req) return;
+  const proliferatorAssignments = editProliferatorsEnabled.value === 'enabled'
+    ? Object.fromEntries(
+      Object.entries(editProliferatorAssignments.value).filter(([, value]) => value),
+    )
+    : undefined;
   bomStore.pendingRequest = {
     ...req,
     mode: editMode.value,
     targetQuantity: editTargetQty.value,
     balancingStrategy: editBalancing.value,
     byproductStrategy: editByproduct.value,
+    proliferatorAssignments,
   };
   bomStore.calculateFromNode(req.nodeId, req.slotId);
 }
 
 function onUpdateShow(val: boolean) {
   if (!val) bomStore.panelVisible = false;
+}
+
+function setProliferatorAssignment(machineId: string, value: string) {
+  editProliferatorAssignments.value = {
+    ...editProliferatorAssignments.value,
+    [machineId]: value,
+  };
+}
+
+function itemName(itemId: string): string {
+  return store.nodes.find(n => n.id === itemId)?.name || itemId;
+}
+
+function formatNumber(value: number): string {
+  return Number.isInteger(value) ? String(value) : value.toFixed(2);
 }
 
 // Sync edit fields when pending request changes
@@ -184,6 +267,8 @@ watch(() => bomStore.pendingRequest, (req) => {
     editTargetQty.value = req.targetQuantity;
     editBalancing.value = req.balancingStrategy;
     editByproduct.value = req.byproductStrategy;
+    editProliferatorAssignments.value = { ...(req.proliferatorAssignments || {}) };
+    editProliferatorsEnabled.value = Object.keys(editProliferatorAssignments.value).length > 0 ? 'enabled' : 'disabled';
   }
 }, { immediate: true });
 </script>
@@ -267,5 +352,44 @@ watch(() => bomStore.pendingRequest, (req) => {
   font-size: 11px;
   margin-top: 8px;
   color: var(--text-dimmed);
+}
+
+.proliferator-config {
+  margin-bottom: var(--spacing-md);
+  padding-top: var(--spacing-sm);
+  border-top: var(--border-width-md) solid var(--border-default);
+}
+
+.machine-proliferator-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.machine-proliferator-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 180px;
+  gap: var(--spacing-sm);
+  align-items: center;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 900;
+  color: var(--text-primary);
+}
+
+.machine-proliferator-row span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.machine-proliferator-empty {
+  padding: var(--spacing-sm);
+  border: var(--border-width-sm) dashed var(--border-default);
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
 }
 </style>

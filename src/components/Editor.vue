@@ -3,16 +3,10 @@
     <DictionaryPanel />
     <div ref="canvasWrapRef" class="canvas-wrap">
       <div class="canvas-toolbar">
-        <button type="button" class="toolbar-btn" @click="relayout()" :title="$t('editor.relayoutTitle')">
-          {{ $t('editor.relayout') }}
+        <button type="button" class="toolbar-btn icon-toolbar-btn" @click="showGameSettings = true" :title="$t('editor.gameSettingsTitle')">
+          <Gamepad2 :size="14" />
         </button>
-        <button type="button" class="toolbar-btn" @click="store.deleteOrphans()" :title="$t('editor.cleanOrphansTitle')">
-          {{ $t('editor.cleanOrphans') }}
-        </button>
-        <button type="button" class="toolbar-btn" @click="openBomPanel()" :title="$t('editor.bomTitle')">
-          {{ $t('editor.bom') }}
-        </button>
-        <button type="button" class="toolbar-btn settings-btn" @click="showSettings = true" :title="$t('editor.settingsTitle')">
+        <button type="button" class="toolbar-btn icon-toolbar-btn" @click="showSettings = true" :title="$t('editor.settingsTitle')">
           <Settings :size="14" />
         </button>
       </div>
@@ -42,6 +36,7 @@
         @node-context-menu="onNodeContextMenu"
         @edge-context-menu="onEdgeContextMenu"
         @edge-double-click="onEdgeDoubleClick"
+        @pane-context-menu="onPaneContextMenu"
         @viewport-change="onViewportChange"
       >
         <Background :gap="20" pattern-color="#1a1d24" />
@@ -98,9 +93,10 @@
       </div>
     </div>
     <SearchOverlay v-if="showSearch" @close="showSearch = false" />
+    <GameSettingsPanel v-model:visible="showGameSettings" />
 
     <!-- Settings Modal -->
-    <n-modal v-model:show="showSettings" preset="card" :title="$t('app.settings')" style="width: 400px;">
+    <n-modal v-model:show="showSettings" preset="card" :title="$t('app.settings')" class="settings-modal">
       <div class="settings-form">
         <div class="form-group">
           <label>{{ $t('app.language') }}</label>
@@ -110,6 +106,25 @@
             size="medium"
             @update:value="onLocaleChange"
           />
+        </div>
+        <div class="settings-section">
+          <div class="section-label">{{ $t('settings.shortcuts') }}</div>
+          <div class="shortcut-list">
+            <button
+              v-for="action in shortcutActions"
+              :key="action.key"
+              type="button"
+              class="shortcut-row"
+              :class="{ capturing: activeShortcut === action.key }"
+              @click="activeShortcut = action.key"
+            >
+              <span>{{ action.label }}</span>
+              <kbd>{{ activeShortcut === action.key ? $t('settings.pressShortcut') : shortcuts[action.key] }}</kbd>
+            </button>
+          </div>
+          <button type="button" class="reset-shortcuts-btn" @click="resetShortcuts">
+            {{ $t('settings.resetShortcuts') }}
+          </button>
         </div>
       </div>
     </n-modal>
@@ -143,9 +158,10 @@ import DictionaryPanel from './DictionaryPanel.vue';
 import SearchOverlay from './SearchOverlay.vue';
 import BomPanel from './BomPanel.vue';
 import ContextMenu from './ContextMenu.vue';
+import GameSettingsPanel from './GameSettingsPanel.vue';
 import type { ContextMenuItem } from './ContextMenu.vue';
 import { useBomStore } from '../store/bom-store';
-import { Settings } from 'lucide-vue-next';
+import { Gamepad2, Settings } from 'lucide-vue-next';
 import { NModal, NSelect, NInputNumber } from 'naive-ui';
 import { supportedLocales, setLocale } from '../locales';
 
@@ -843,8 +859,80 @@ const showSearch = ref(false);
 
 // --- Settings ---
 const showSettings = ref(false);
+const showGameSettings = ref(false);
 const currentLocale = ref(localStorage.getItem('app-locale') || 'en-US');
 const localeOptions = supportedLocales.map(l => ({ label: l.label, value: l.value }));
+
+type ShortcutAction = 'undo' | 'redo' | 'search' | 'bom' | 'relayout' | 'createGroup' | 'disbandGroup';
+type ShortcutMap = Record<ShortcutAction, string>;
+
+const defaultShortcuts: ShortcutMap = {
+  undo: 'Ctrl+Z',
+  redo: 'Ctrl+Y',
+  search: 'Ctrl+P',
+  bom: 'Ctrl+B',
+  relayout: 'Ctrl+R',
+  createGroup: 'Ctrl+G',
+  disbandGroup: 'Ctrl+Shift+G',
+};
+
+function loadShortcuts(): ShortcutMap {
+  try {
+    const raw = localStorage.getItem('rd-shortcuts');
+    return raw ? { ...defaultShortcuts, ...JSON.parse(raw) } : { ...defaultShortcuts };
+  } catch {
+    return { ...defaultShortcuts };
+  }
+}
+
+const shortcuts = ref<ShortcutMap>(loadShortcuts());
+const activeShortcut = ref<ShortcutAction | null>(null);
+
+const shortcutActions = computed(() => [
+  { key: 'undo' as const, label: t('settings.undo') },
+  { key: 'redo' as const, label: t('settings.redo') },
+  { key: 'search' as const, label: t('settings.search') },
+  { key: 'bom' as const, label: t('settings.bom') },
+  { key: 'relayout' as const, label: t('settings.relayout') },
+  { key: 'createGroup' as const, label: t('settings.createGroup') },
+  { key: 'disbandGroup' as const, label: t('settings.disbandGroup') },
+]);
+
+function persistShortcuts() {
+  localStorage.setItem('rd-shortcuts', JSON.stringify(shortcuts.value));
+}
+
+function resetShortcuts() {
+  shortcuts.value = { ...defaultShortcuts };
+  persistShortcuts();
+}
+
+function shortcutFor(action: ShortcutAction): string {
+  return shortcuts.value[action];
+}
+
+function formatShortcutFromEvent(e: KeyboardEvent): string | null {
+  const key = e.key.length === 1 ? e.key.toUpperCase() : e.key;
+  if (['Control', 'Shift', 'Alt', 'Meta'].includes(key)) return null;
+  const parts: string[] = [];
+  if (e.ctrlKey || e.metaKey) parts.push('Ctrl');
+  if (e.shiftKey) parts.push('Shift');
+  if (e.altKey) parts.push('Alt');
+  parts.push(key);
+  return parts.join('+');
+}
+
+function matchesShortcut(e: KeyboardEvent, combo: string): boolean {
+  const parts = combo.split('+');
+  const key = parts[parts.length - 1]?.toLowerCase();
+  const wantsCtrl = parts.includes('Ctrl');
+  const wantsShift = parts.includes('Shift');
+  const wantsAlt = parts.includes('Alt');
+  return (e.ctrlKey || e.metaKey) === wantsCtrl
+    && e.shiftKey === wantsShift
+    && e.altKey === wantsAlt
+    && e.key.toLowerCase() === key;
+}
 
 function onLocaleChange(newLocale: string) {
   setLocale(newLocale);
@@ -905,7 +993,7 @@ function onPopoverOpenDrawer() {
 // --- Context menu state ---
 const ctxMenuVisible = ref(false);
 const ctxMenuPosition = ref({ x: 0, y: 0 });
-const ctxMenuTargetType = ref<'node' | 'edge' | null>(null);
+const ctxMenuTargetType = ref<'node' | 'edge' | 'pane' | null>(null);
 const ctxMenuNodeId = ref<string | null>(null);
 const ctxMenuEdgeId = ref<string | null>(null);
 
@@ -919,7 +1007,7 @@ const ctxMenuItems = computed<ContextMenuItem[]>(() => {
       {
         key: 'bom',
         label: t('editor.calculateBom'),
-        shortcut: 'Ctrl+B',
+        shortcut: shortcutFor('bom'),
         disabled: !activeSlotId,
         action: () => {
           if (activeSlotId) {
@@ -985,6 +1073,28 @@ const ctxMenuItems = computed<ContextMenuItem[]>(() => {
     ];
   }
 
+  if (ctxMenuTargetType.value === 'pane') {
+    return [
+      {
+        key: 'relayout',
+        label: t('editor.relayout'),
+        shortcut: shortcutFor('relayout'),
+        action: () => {
+          relayout();
+          closeContextMenu();
+        },
+      },
+      {
+        key: 'clean-orphans',
+        label: t('editor.cleanOrphans'),
+        action: () => {
+          store.deleteOrphans();
+          closeContextMenu();
+        },
+      },
+    ];
+  }
+
   return [];
 });
 
@@ -1008,6 +1118,16 @@ function onEdgeContextMenu(event: EdgeMouseEvent) {
   ctxMenuEdgeId.value = edgeId;
   ctxMenuNodeId.value = null;
   ctxMenuPosition.value = { x: me.clientX, y: me.clientY };
+  ctxMenuVisible.value = true;
+}
+
+function onPaneContextMenu(event: MouseEvent | { event: MouseEvent }) {
+  const mouseEvent = event instanceof MouseEvent ? event : event.event;
+  mouseEvent.preventDefault();
+  ctxMenuTargetType.value = 'pane';
+  ctxMenuNodeId.value = null;
+  ctxMenuEdgeId.value = null;
+  ctxMenuPosition.value = { x: mouseEvent.clientX, y: mouseEvent.clientY };
   ctxMenuVisible.value = true;
 }
 
@@ -1146,33 +1266,51 @@ function disbandSelectedGroup() {
 
 // --- Keyboard shortcuts ---
 function onKeydown(e: KeyboardEvent) {
-  const ctrl = e.ctrlKey || e.metaKey;
+  if (activeShortcut.value) {
+    const combo = formatShortcutFromEvent(e);
+    if (combo) {
+      e.preventDefault();
+      shortcuts.value = { ...shortcuts.value, [activeShortcut.value]: combo };
+      persistShortcuts();
+      activeShortcut.value = null;
+    }
+    return;
+  }
 
-  if (ctrl && !e.shiftKey && e.key === 'g') {
+  const target = e.target as HTMLElement | null;
+  const isEditingText = target?.matches('input, textarea, [contenteditable="true"]') || target?.closest('.n-select');
+  if (isEditingText) return;
+
+  if (matchesShortcut(e, shortcutFor('createGroup'))) {
     e.preventDefault();
     createGroupFromSelection();
     return;
   }
-  if (ctrl && e.shiftKey && e.key === 'G') {
+  if (matchesShortcut(e, shortcutFor('disbandGroup'))) {
     e.preventDefault();
     disbandSelectedGroup();
     return;
   }
 
-  if (ctrl && e.key === 'z') {
+  if (matchesShortcut(e, shortcutFor('undo'))) {
     e.preventDefault();
     store.undo();
-  } else if (ctrl && e.key === 'y') {
+  } else if (matchesShortcut(e, shortcutFor('redo'))) {
     e.preventDefault();
     store.redo();
-  } else if (ctrl && e.key === 'b') {
+  } else if (matchesShortcut(e, shortcutFor('bom'))) {
     e.preventDefault();
     openBomPanel();
-  } else if (ctrl && e.key === 'p') {
+  } else if (matchesShortcut(e, shortcutFor('search'))) {
     e.preventDefault();
     showSearch.value = !showSearch.value;
+  } else if (matchesShortcut(e, shortcutFor('relayout'))) {
+    e.preventDefault();
+    relayout();
   } else if (e.key === 'Escape' && showSearch.value) {
     showSearch.value = false;
+  } else if (e.key === 'Escape' && activeShortcut.value) {
+    activeShortcut.value = null;
   } else if (e.key === 'Escape') {
     closeContextMenu();
   }
@@ -1236,8 +1374,13 @@ onUnmounted(() => {
   transform: translate(2px, 2px);
   box-shadow: 2px 2px 0px var(--text-primary);
 }
-.toolbar-btn.settings-btn {
-  padding: 4px 8px;
+.toolbar-btn.icon-toolbar-btn {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .settings-form {
@@ -1256,6 +1399,67 @@ onUnmounted(() => {
   color: var(--text-primary);
 }
 
+.settings-section {
+  margin-top: var(--spacing-lg);
+}
+
+.shortcut-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.shortcut-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--spacing-md);
+  width: 100%;
+  padding: var(--spacing-sm);
+  border: var(--border-width-md) solid var(--border-default);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 900;
+  cursor: pointer;
+  box-shadow: var(--shadow-node);
+}
+
+.shortcut-row.capturing {
+  border-color: var(--accent-blue);
+  background: var(--bg-hover);
+}
+
+.shortcut-row span {
+  text-align: left;
+}
+
+.shortcut-row kbd {
+  min-width: 104px;
+  padding: 3px 6px;
+  border: var(--border-width-sm) solid var(--border-default);
+  background: var(--panel-bg);
+  color: var(--text-primary);
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.reset-shortcuts-btn {
+  width: 100%;
+  margin-top: var(--spacing-md);
+  padding: 8px 12px;
+  border: var(--border-width-md) solid var(--border-default);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
 </style>
 
 <style>
@@ -1269,5 +1473,15 @@ onUnmounted(() => {
 .bom-dimmed {
   opacity: 0.25;
   transition: opacity 0.2s ease;
+}
+
+.settings-modal {
+  width: 480px;
+  max-width: calc(100vw - 32px);
+  --n-border-radius: var(--radius-sm);
+  --n-color: var(--panel-bg);
+  --n-text-color: var(--text-primary);
+  --n-title-text-color: var(--text-primary);
+  box-shadow: var(--shadow-modal);
 }
 </style>

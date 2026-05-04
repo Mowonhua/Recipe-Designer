@@ -11,6 +11,7 @@ export interface BomRequest {
   targetQuantity: number;
   balancingStrategy: BalancingStrategy;
   byproductStrategy: ByproductStrategy;
+  proliferatorAssignments?: Record<string, string>;
 }
 
 export interface BomTreeNode {
@@ -33,6 +34,7 @@ export interface BomTreeNode {
   inputs: BomTreeEdge[];
   byproducts: BomByproduct[];
   catalyst?: BomTreeEdge;
+  proliferator?: BomTreeEdge;
 
   isRawMaterial: boolean;
   isByproduct: boolean;
@@ -51,6 +53,7 @@ export interface BomTreeEdge {
   child: BomTreeNode | null;
   isByproduct?: boolean;
   isCatalyst?: boolean;
+  isProliferator?: boolean;
 }
 
 export interface BomByproduct {
@@ -71,6 +74,7 @@ export interface BomSummaryRow {
   isRawMaterial: boolean;
   isByproduct: boolean;
   isCatalyst?: boolean;
+  isProliferator?: boolean;
   isSurplus: boolean;
   surplusPercent?: number;
 }

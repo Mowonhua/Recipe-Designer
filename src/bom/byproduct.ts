@@ -1,5 +1,5 @@
 import type { State, RecipeSlot } from '../store';
-import type { BomByproduct, ByproductStrategy, BomTreeNode, BomTreeEdge } from './types';
+import type { BomByproduct, ByproductStrategy, BomTreeNode } from './types';
 
 export interface ByproductAccumulator {
   available: Map<string, number>;  // itemId -> total byproduct quantity available

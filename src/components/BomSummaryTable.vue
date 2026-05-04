@@ -18,6 +18,7 @@
           'raw-row': row.isRawMaterial,
           'byproduct-row': row.isByproduct,
           'catalyst-row': row.isCatalyst,
+          'proliferator-row': row.isProliferator,
           'surplus-row': row.isSurplus,
         }"
         @mouseenter="$emit('highlight', row.itemId)"
@@ -34,6 +35,7 @@
           <span v-if="row.isRawMaterial" class="tag-pill raw-tag">{{ $t('bom.raw') }}</span>
           <span v-if="row.isByproduct" class="tag-pill bp-tag">{{ $t('bom.bp') }}</span>
           <span v-if="row.isCatalyst" class="tag-pill cat-tag">{{ $t('bom.cat') }}</span>
+          <span v-if="row.isProliferator" class="tag-pill prolif-tag">{{ $t('bom.prolif') }}</span>
           <span v-if="row.isSurplus" class="tag-pill surplus-tag">{{ row.surplusPercent ? $t('bom.surplus', { pct: row.surplusPercent.toFixed(1) }) : '' }}</span>
         </td>
       </tr>
@@ -125,8 +127,12 @@ td {
 .catalyst-row .col-qty,
 .catalyst-row .col-rate { color: var(--accent-blue); }
 
+.proliferator-row .col-qty,
+.proliferator-row .col-rate { color: var(--accent-green); }
+
 .raw-tag { background: var(--text-muted); color: var(--bg-color); }
 .bp-tag { background: var(--accent-tan); color: #fff; }
 .cat-tag { background: var(--accent-blue); color: #fff; }
+.prolif-tag { background: var(--accent-green); color: #fff; }
 .surplus-tag { background: var(--accent-red); color: #fff; }
 </style>

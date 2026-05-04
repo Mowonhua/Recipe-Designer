@@ -61,7 +61,8 @@ export class BomCache {
   }
 
   private makeKey(req: BomRequest): string {
-    return `${req.nodeId}:${req.slotId}:${req.mode}:${req.targetQuantity}`;
+    const proliferators = JSON.stringify(req.proliferatorAssignments || {});
+    return `${req.nodeId}:${req.slotId}:${req.mode}:${req.targetQuantity}:${proliferators}`;
   }
 
   private computeFingerprint(request: BomRequest, state: State): string {
@@ -75,6 +76,7 @@ export class BomCache {
       request.targetQuantity,
       request.balancingStrategy,
       request.byproductStrategy,
+      request.proliferatorAssignments,
     ];
 
     if (slot) {
@@ -110,15 +112,28 @@ export class BomCache {
 
     // Include relevant global effects
     if (slot) {
-      const slotTagSet = new Set(slot.tags);
       const machine = state.machines.find(m => m.id === slot.machine_id);
       const allTags = new Set([...slot.tags, ...(machine?.tags || [])]);
 
       const relevantEffects = state.global_effects
+        .filter(e => e.enabled !== false)
         .filter(e => e.type === 'recipe_yield' && e.target_tags.some(t => allTags.has(t))
           || e.type === 'machine_speed' && e.target_tags.some(t => allTags.has(t)))
-        .map(e => ({ id: e.id, multiplier: e.multiplier }));
+        .map(e => ({ id: e.id, multiplier: e.multiplier, enabled: e.enabled }));
       parts.push(relevantEffects);
+
+      const proliferatorId = request.proliferatorAssignments?.[slot.machine_id];
+      if (proliferatorId) {
+        const proliferator = state.proliferators.find(p => p.id === proliferatorId);
+        if (proliferator) {
+          parts.push({
+            id: proliferator.id,
+            item_id: proliferator.item_id,
+            multiplier: proliferator.multiplier,
+            consumption_per_cycle: proliferator.consumption_per_cycle,
+          });
+        }
+      }
     }
 
     return JSON.stringify(parts);

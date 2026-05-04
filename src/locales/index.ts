@@ -2,7 +2,13 @@ import { createI18n } from 'vue-i18n';
 import enUS from './en-US.json';
 import zhCN from './zh-CN.json';
 
-const savedLocale = localStorage.getItem('app-locale') || 'en-US';
+function getStorage(): Storage | null {
+  return typeof localStorage !== 'undefined' && typeof localStorage.getItem === 'function'
+    ? localStorage
+    : null;
+}
+
+const savedLocale = getStorage()?.getItem('app-locale') || 'en-US';
 
 const i18n = createI18n({
   legacy: false,
@@ -23,5 +29,5 @@ export const supportedLocales = [
 
 export function setLocale(locale: string) {
   i18n.global.locale.value = locale as any;
-  localStorage.setItem('app-locale', locale);
+  getStorage()?.setItem('app-locale', locale);
 }

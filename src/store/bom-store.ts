@@ -37,6 +37,7 @@ export const useBomStore = defineStore('bom', () => {
           targetQuantity: 0,
           balancingStrategy: 'integer-rounding',
           byproductStrategy: 'ignore-annotate',
+          proliferatorAssignments: pendingRequest.value?.proliferatorAssignments,
         },
         tree: {
           nodeId,
@@ -67,6 +68,7 @@ export const useBomStore = defineStore('bom', () => {
       targetQuantity: pendingRequest.value?.targetQuantity ?? 10,
       balancingStrategy: pendingRequest.value?.balancingStrategy ?? 'integer-rounding',
       byproductStrategy: pendingRequest.value?.byproductStrategy ?? 'ignore-annotate',
+      proliferatorAssignments: pendingRequest.value?.proliferatorAssignments,
     };
 
     pendingRequest.value = request;

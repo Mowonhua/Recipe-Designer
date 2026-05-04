@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { v4 as uuidv4 } from 'uuid';
 import { findOrphans, type ValidationError } from './validation';
 
@@ -7,10 +7,23 @@ import { findOrphans, type ValidationError } from './validation';
 export interface GlobalEffect {
   id: string;
   name: string;
+  enabled: boolean;
   source: 'skill' | 'treasure' | 'research' | 'other';
   type: 'recipe_yield' | 'machine_speed';
   target_tags: string[];
   multiplier: number;
+}
+
+export interface Proliferator {
+  id: string;
+  item_id: string;
+  multiplier: number;
+  consumption_per_cycle: number;
+}
+
+export interface TagPool {
+  recipe_tags: string[];
+  machine_tags: string[];
 }
 
 export interface Machine {
@@ -84,6 +97,8 @@ export interface State {
   version: number;
   meta: ProjectMeta;
   global_effects: GlobalEffect[];
+  proliferators: Proliferator[];
+  tag_pool: TagPool;
   machines: Machine[];
   nodes: ItemNode[];
   edges: FlowEdge[];
@@ -258,6 +273,8 @@ export const useStore = defineStore('recipe-designer', () => {
   });
   
   const global_effects = ref<GlobalEffect[]>([]);
+  const proliferators = ref<Proliferator[]>([]);
+  const tag_pool = ref<TagPool>({ recipe_tags: [], machine_tags: [] });
   const machines = ref<Machine[]>([]);
   const nodes = ref<ItemNode[]>([]);
   const edges = ref<FlowEdge[]>([]);
@@ -292,6 +309,8 @@ export const useStore = defineStore('recipe-designer', () => {
       version: version.value,
       meta: meta.value,
       global_effects: global_effects.value,
+      proliferators: proliferators.value,
+      tag_pool: tag_pool.value,
       machines: machines.value,
       nodes: nodes.value,
       edges: edges.value,
@@ -315,6 +334,8 @@ export const useStore = defineStore('recipe-designer', () => {
         version: version.value,
         meta: meta.value,
         global_effects: global_effects.value,
+        proliferators: proliferators.value,
+        tag_pool: tag_pool.value,
         machines: machines.value,
         nodes: nodes.value,
         edges: edges.value,
@@ -334,6 +355,8 @@ export const useStore = defineStore('recipe-designer', () => {
         version: version.value,
         meta: meta.value,
         global_effects: global_effects.value,
+        proliferators: proliferators.value,
+        tag_pool: tag_pool.value,
         machines: machines.value,
         nodes: nodes.value,
         edges: edges.value,
@@ -448,6 +471,64 @@ export const useStore = defineStore('recipe-designer', () => {
     const idx = machines.value.findIndex(m => m.id === id);
     if (idx >= 0) {
       machines.value.splice(idx, 1);
+      changeCounter.value++;
+    }
+  }
+
+  function addGlobalEffect(effect?: Partial<GlobalEffect>): GlobalEffect {
+    const next: GlobalEffect = {
+      id: effect?.id || uuidv4(),
+      name: effect?.name || 'New Effect',
+      enabled: effect?.enabled ?? true,
+      source: effect?.source || 'other',
+      type: effect?.type || 'recipe_yield',
+      target_tags: effect?.target_tags || [],
+      multiplier: effect?.multiplier ?? 1,
+    };
+    global_effects.value.push(next);
+    changeCounter.value++;
+    return next;
+  }
+
+  function updateGlobalEffect(id: string, changes: Partial<GlobalEffect>) {
+    const effect = global_effects.value.find(e => e.id === id);
+    if (!effect) return;
+    Object.assign(effect, changes);
+    changeCounter.value++;
+  }
+
+  function deleteGlobalEffect(id: string) {
+    const idx = global_effects.value.findIndex(e => e.id === id);
+    if (idx >= 0) {
+      global_effects.value.splice(idx, 1);
+      changeCounter.value++;
+    }
+  }
+
+  function addProliferator(proliferator?: Partial<Proliferator>): Proliferator {
+    const fallbackItem = nodes.value[0]?.id || '';
+    const next: Proliferator = {
+      id: proliferator?.id || uuidv4(),
+      item_id: proliferator?.item_id || fallbackItem,
+      multiplier: proliferator?.multiplier ?? 1,
+      consumption_per_cycle: proliferator?.consumption_per_cycle ?? 1,
+    };
+    proliferators.value.push(next);
+    changeCounter.value++;
+    return next;
+  }
+
+  function updateProliferator(id: string, changes: Partial<Proliferator>) {
+    const proliferator = proliferators.value.find(p => p.id === id);
+    if (!proliferator) return;
+    Object.assign(proliferator, changes);
+    changeCounter.value++;
+  }
+
+  function deleteProliferator(id: string) {
+    const idx = proliferators.value.findIndex(p => p.id === id);
+    if (idx >= 0) {
+      proliferators.value.splice(idx, 1);
       changeCounter.value++;
     }
   }
@@ -610,6 +691,8 @@ export const useStore = defineStore('recipe-designer', () => {
       version: version.value,
       meta: meta.value,
       global_effects: global_effects.value,
+      proliferators: proliferators.value,
+      tag_pool: tag_pool.value,
       machines: machines.value,
       nodes: nodes.value,
       edges: edges.value,
@@ -617,20 +700,58 @@ export const useStore = defineStore('recipe-designer', () => {
     };
   }
 
-  function seedData(data: { nodes: ItemNode[]; edges: FlowEdge[]; machines: Machine[] }) {
+  function seedData(data: { nodes: ItemNode[]; edges: FlowEdge[]; machines: Machine[]; global_effects?: GlobalEffect[]; proliferators?: Proliferator[] }) {
     nodes.value = data.nodes;
     edges.value = data.edges;
     machines.value = data.machines;
+    global_effects.value = data.global_effects || global_effects.value;
+    proliferators.value = data.proliferators || proliferators.value;
+    rebuildTagPool();
     // Clear history when seeding
     history.value = [];
     historyIndex.value = -1;
     changeCounter.value++;
   }
 
+  function rebuildTagPool() {
+    const recipeTags = new Set<string>();
+    const machineTags = new Set<string>();
+
+    for (const node of nodes.value) {
+      for (const slot of node.slots) {
+        for (const tag of slot.tags) {
+          if (tag.trim()) recipeTags.add(tag.trim());
+        }
+      }
+    }
+
+    for (const machine of machines.value) {
+      for (const tag of machine.tags) {
+        if (tag.trim()) machineTags.add(tag.trim());
+      }
+      for (const tag of machine.allowed_recipe_tags) {
+        if (tag.trim()) machineTags.add(tag.trim());
+      }
+    }
+
+    tag_pool.value = {
+      recipe_tags: Array.from(recipeTags).sort((a, b) => a.localeCompare(b)),
+      machine_tags: Array.from(machineTags).sort((a, b) => a.localeCompare(b)),
+    };
+  }
+
+  watch(
+    () => [nodes.value, machines.value],
+    () => rebuildTagPool(),
+    { deep: true, immediate: true },
+  );
+
   return {
     version,
     meta,
     global_effects,
+    proliferators,
+    tag_pool,
     machines,
     nodes,
     edges,
@@ -655,6 +776,12 @@ export const useStore = defineStore('recipe-designer', () => {
     addMachine,
     updateMachine,
     deleteMachine,
+    addGlobalEffect,
+    updateGlobalEffect,
+    deleteGlobalEffect,
+    addProliferator,
+    updateProliferator,
+    deleteProliferator,
     setNodeMachine,
     addItem,
     updateItem,
