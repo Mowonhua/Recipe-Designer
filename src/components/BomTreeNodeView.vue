@@ -22,6 +22,12 @@
         <span class="node-qty" v-if="node.executionCount !== undefined">
           ×{{ node.executionCount }}
         </span>
+        <span class="node-mul prolif" v-if="node.proliferatorMultiplier">
+          ×{{ node.proliferatorMultiplier }}
+        </span>
+        <span class="node-mul global" v-if="node.globalYieldMultiplier">
+          ×{{ fmtNum(node.globalYieldMultiplier) }}
+        </span>
         <span class="node-total mono" v-if="node.executionCount !== undefined && !node.isRawMaterial">
           = {{ node.targetQuantity }}
         </span>
@@ -161,6 +167,18 @@ function fmtNum(v: number): string {
   font-size: 9px;
   color: var(--text-muted);
   font-style: italic;
+}
+
+.node-mul {
+  font-weight: 700;
+}
+
+.node-mul.prolif {
+  color: var(--accent-green);
+}
+
+.node-mul.global {
+  color: var(--accent-red);
 }
 
 .node-qty {

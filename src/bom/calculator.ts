@@ -66,7 +66,8 @@ function computeOneTime(
   visited.add(visitKey);
 
   const assignedProliferator = getAssignedProliferator(state, request, slot);
-  const outputPerExecution = slot.primary_output_quantity * (assignedProliferator?.multiplier ?? 1);
+  const { yieldMultiplier, proliferatorMultiplier, globalYieldMultiplier } = computeMultipliers(state, slot, assignedProliferator?.multiplier ?? 1);
+  const outputPerExecution = slot.primary_output_quantity * yieldMultiplier;
   const executionCount = Math.ceil(request.targetQuantity / outputPerExecution);
   const totalProduced = executionCount * outputPerExecution;
   const isSurplus = totalProduced > request.targetQuantity;
@@ -196,6 +197,8 @@ function computeOneTime(
     surplusPercent,
     isCatalystBlocked,
     isCycleDetected: false,
+    proliferatorMultiplier: proliferatorMultiplier !== 1 ? proliferatorMultiplier : undefined,
+    globalYieldMultiplier: globalYieldMultiplier !== 1 ? globalYieldMultiplier : undefined,
   };
 }
 
@@ -225,7 +228,7 @@ function computeContinuous(
   visited.add(visitKey);
 
   const assignedProliferator = getAssignedProliferator(state, request, slot);
-  const { yieldMultiplier, speedMultiplier } = computeMultipliers(state, slot, assignedProliferator?.multiplier ?? 1);
+  const { yieldMultiplier, speedMultiplier, proliferatorMultiplier, globalYieldMultiplier } = computeMultipliers(state, slot, assignedProliferator?.multiplier ?? 1);
 
   // All quantities in items/second internally; targetQuantity is items/minute from user
   const targetRatePerSec = request.targetQuantity / 60;
@@ -334,6 +337,8 @@ function computeContinuous(
     surplusPercent,
     isCatalystBlocked,
     isCycleDetected: false,
+    proliferatorMultiplier: proliferatorMultiplier !== 1 ? proliferatorMultiplier : undefined,
+    globalYieldMultiplier: globalYieldMultiplier !== 1 ? globalYieldMultiplier : undefined,
   };
 }
 

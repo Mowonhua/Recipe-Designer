@@ -42,6 +42,8 @@ export interface BomTreeNode {
   surplusPercent?: number;
   isCatalystBlocked: boolean;
   isCycleDetected: boolean;
+  proliferatorMultiplier?: number;
+  globalYieldMultiplier?: number;
 }
 
 export interface BomTreeEdge {
@@ -96,6 +98,9 @@ export interface BomWarning {
 export interface MultiplierSet {
   yieldMultiplier: number;
   speedMultiplier: number;
+  proliferatorMultiplier: number;
+  globalYieldMultiplier: number;
+  globalSpeedMultiplier: number;
 }
 
 export type BomContext = State;

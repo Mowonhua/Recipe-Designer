@@ -7,7 +7,10 @@ export function computeMultipliers(
   machineBoost: number = 1,
 ): MultiplierSet {
   const machine = state.machines.find(m => m.id === slot.machine_id);
-  if (!machine) return { yieldMultiplier: 1, speedMultiplier: 1 };
+  if (!machine) return {
+    yieldMultiplier: 1, speedMultiplier: 1,
+    proliferatorMultiplier: 1, globalYieldMultiplier: 1, globalSpeedMultiplier: 1,
+  };
 
   // recipe_yield: additive stacking, match slot.tags ∪ machine.tags ∩ effect.target_tags
   const allTags = new Set([...slot.tags, ...machine.tags]);
@@ -18,8 +21,8 @@ export function computeMultipliers(
       yieldAdditive += effect.multiplier - 1;
     }
   }
-  // Node machine boost * (1 + additive yield from global effects)
-  const yieldMultiplier = machineBoost * (1 + yieldAdditive);
+  const globalYieldMultiplier = 1 + yieldAdditive;
+  const yieldMultiplier = machineBoost * globalYieldMultiplier;
 
   // machine_speed: additive stacking, match machine.tags ∩ effect.target_tags
   const machineTags = new Set(machine.tags);
@@ -30,12 +33,13 @@ export function computeMultipliers(
       speedAdditive += effect.multiplier - 1;
     }
   }
-  let speedMultiplier = machine.base_speed * (1 + speedAdditive);
+  const globalSpeedMultiplier = 1 + speedAdditive;
+  let speedMultiplier = machine.base_speed * globalSpeedMultiplier;
 
   // Catalyst speed multiplier
   if (slot.catalyst && slot.catalyst.speed_multiplier) {
     speedMultiplier *= slot.catalyst.speed_multiplier;
   }
 
-  return { yieldMultiplier, speedMultiplier };
+  return { yieldMultiplier, speedMultiplier, proliferatorMultiplier: machineBoost, globalYieldMultiplier, globalSpeedMultiplier };
 }
