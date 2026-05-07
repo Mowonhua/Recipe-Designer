@@ -244,7 +244,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, watch, computed, toRef } from 'vue';
+import { ref, reactive, watch, computed, toRef, toRaw } from 'vue';
 import { NDrawer, NDrawerContent, NInput, NInputNumber, NSelect, NButton } from 'naive-ui';
 import { v4 as uuidv4 } from 'uuid';
 import { useI18n } from 'vue-i18n';
@@ -424,7 +424,7 @@ function buildMachine(): Machine {
     base_speed: form.base_speed,
     tags: [...form.tags],
     allowed_recipe_tags: [...form.allowed_recipe_tags],
-    slots: structuredClone(slots.value),
+    slots: structuredClone(toRaw(slots.value)),
   };
 }
 
@@ -490,7 +490,7 @@ watch(
       form.tags = [...m.tags];
       form.allowed_recipe_tags = [...m.allowed_recipe_tags];
       slots.value = (m.slots && m.slots.length > 0)
-        ? structuredClone(m.slots)
+        ? structuredClone(toRaw(m.slots))
         : [...(store.createDefaultSlots())];
     } else {
       // Create mode
