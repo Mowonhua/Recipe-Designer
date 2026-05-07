@@ -92,84 +92,22 @@
       <!-- Machines tab -->
       <template v-else>
         <template v-for="machine in filteredMachines" :key="machine.id">
-          <!-- Inline edit mode -->
-          <div v-if="editingMachineId === machine.id" class="inline-form">
-            <input
-              v-model="editMachineNameValue"
-              type="text"
-              class="form-input edit-machine-input"
-              :placeholder="$t('dict.machineNamePlaceholder')"
-              @keydown.enter="saveMachineEdit"
-              @keydown.escape="cancelMachineEdit"
-            />
-            <div class="form-row">
-              <label class="speed-label">{{ $t('dict.speed') }}</label>
-              <n-input-number
-                v-model:value="editMachineSpeedValue"
-                size="tiny"
-                :min="0.25"
-                :step="0.25"
-                class="rd-inline-input"
-                style="width: 90px;"
-                @wheel.prevent="(e: WheelEvent) => onNumberWheel(() => editMachineSpeedValue, (v) => editMachineSpeedValue = v, 0.25, 0.25, e)"
-                @keydown.enter="saveMachineEdit"
-                @keydown.escape="cancelMachineEdit"
-              />
-            </div>
-            <div class="form-actions">
-              <button class="form-btn confirm" @click="saveMachineEdit" :disabled="!editMachineNameValue.trim()">{{ $t('dict.save') }}</button>
-              <button class="form-btn cancel" @click="cancelMachineEdit">{{ $t('dict.cancel') }}</button>
-            </div>
-          </div>
-          <!-- Display mode -->
           <div
-            v-else
             class="list-item"
             draggable="true"
             @dragstart="onDragStartMachine($event, machine.id)"
+            @click="openMachineDrawer(machine)"
             @contextmenu.prevent.stop="openMachineContextMenu($event, machine)"
           >
             <span class="dot machine-dot"></span>
             <span class="item-name">{{ machine.name }}</span>
             <span class="speed-badge">x{{ machine.base_speed }}</span>
+            <span class="slot-summary">{{ store.getMachineSlotSummary(machine) }}</span>
           </div>
         </template>
 
-        <!-- Inline new machine form -->
-        <div v-if="isAddingMachine" class="inline-form">
-          <input
-            ref="newMachineInputRef"
-            v-model="newMachineName"
-            type="text"
-            class="form-input"
-            :placeholder="$t('dict.machineNamePlaceholder')"
-            @keydown.enter="createMachine"
-            @keydown.escape="cancelAddMachine"
-          />
-          <div class="form-row">
-            <label class="speed-label">{{ $t('dict.speed') }}</label>
-            <input
-              v-model.number="newMachineSpeed"
-              type="number"
-              class="form-input speed-input"
-              min="0.25"
-              max="100"
-              step="0.25"
-              @keydown.enter="createMachine"
-            />
-          </div>
-          <div class="form-actions">
-            <button class="form-btn confirm" @click="createMachine" :disabled="!newMachineName.trim()">{{ $t('dict.add') }}</button>
-            <button class="form-btn cancel" @click="cancelAddMachine">{{ $t('dict.cancel') }}</button>
-          </div>
-        </div>
-
         <!-- New Machine placeholder -->
-        <div
-          v-else
-          class="list-item add-item"
-          @click="startAddMachine"
-        >
+        <div class="list-item add-item" @click="openMachineDrawer(null)">
           <span class="add-icon">+</span>
           <span class="item-name">{{ $t('dict.newMachine') }}</span>
         </div>
@@ -196,6 +134,15 @@
       @click="closeContextMenu"
     ></div>
 
+    <!-- Machine Editor Drawer -->
+    <MachineEditorDrawer
+      :visible="machineDrawerVisible"
+      :machine="editingMachine"
+      @update:visible="machineDrawerVisible = $event"
+      @saved="onMachineSaved"
+      @deleted="onMachineDeleted"
+    />
+
     <!-- Confirm Dialog -->
     <ConfirmDialog
       :visible="confirmDialog.show"
@@ -210,12 +157,10 @@
 
 <script setup lang="ts">
 import { ref, computed, nextTick, onMounted, onUnmounted } from 'vue';
-import { v4 as uuidv4 } from 'uuid';
 import { useI18n } from 'vue-i18n';
-import { NInputNumber } from 'naive-ui';
-import { onNumberWheel } from '../composables/useWheelNumber';
 import { useStore, type ItemNode, type Machine } from '../store';
 import ConfirmDialog from './ConfirmDialog.vue';
+import MachineEditorDrawer from './MachineEditorDrawer.vue';
 
 const { t } = useI18n();
 const store = useStore();
@@ -305,74 +250,28 @@ function deleteItem(nodeId: string) {
   };
 }
 
-// --- Machine CRUD ---
-const isAddingMachine = ref(false);
-const newMachineName = ref('');
-const newMachineSpeed = ref(1);
-const newMachineInputRef = ref<HTMLInputElement | null>(null);
+// --- Machine Editor Drawer ---
+const machineDrawerVisible = ref(false);
+const editingMachine = ref<Machine | null>(null); // null = create mode
 
-function startAddMachine() {
-  isAddingMachine.value = true;
-  newMachineName.value = '';
-  newMachineSpeed.value = 1;
-  nextTick(() => { newMachineInputRef.value?.focus(); });
+function openMachineDrawer(machine: Machine | null) {
+  editingMachine.value = machine;
+  machineDrawerVisible.value = true;
 }
 
-function cancelAddMachine() {
-  isAddingMachine.value = false;
-  newMachineName.value = '';
-  newMachineSpeed.value = 1;
-}
-
-function createMachine() {
-  const name = newMachineName.value.trim();
-  if (!name) return;
-  const speed = Math.max(0.25, newMachineSpeed.value || 1.0);
-  store.addMachine({
-    id: uuidv4(),
-    name,
-    base_speed: speed,
-    tags: [],
-    allowed_recipe_tags: [],
-  });
-  newMachineName.value = '';
-  newMachineSpeed.value = 1;
-  isAddingMachine.value = false;
-}
-
-const editingMachineId = ref<string | null>(null);
-const editMachineNameValue = ref('');
-const editMachineSpeedValue = ref(1);
-
-function startEditMachine(machineId: string) {
-  const machine = store.machines.find(m => m.id === machineId);
-  if (!machine) return;
-  editingMachineId.value = machineId;
-  editMachineNameValue.value = machine.name;
-  editMachineSpeedValue.value = machine.base_speed;
-  nextTick(() => {
-    const input = document.querySelector('.edit-machine-input') as HTMLInputElement;
-    input?.focus();
-    input?.select();
-  });
-}
-
-function saveMachineEdit() {
-  const name = editMachineNameValue.value.trim();
-  if (name && editingMachineId.value) {
-    const machine = store.machines.find(m => m.id === editingMachineId.value);
-    if (machine) {
-      const speed = Math.max(0.25, editMachineSpeedValue.value || 1.0);
-      if (name !== machine.name || speed !== machine.base_speed) {
-        store.updateMachine(editingMachineId.value, { name, base_speed: speed });
-      }
-    }
+function onMachineSaved(machine: Machine) {
+  const existing = store.machines.find(m => m.id === machine.id);
+  if (existing) {
+    store.updateMachine(machine.id, machine);
+  } else {
+    store.addMachine(machine);
   }
-  editingMachineId.value = null;
+  machineDrawerVisible.value = false;
 }
 
-function cancelMachineEdit() {
-  editingMachineId.value = null;
+function onMachineDeleted(machineId: string) {
+  store.deleteMachine(machineId);
+  machineDrawerVisible.value = false;
 }
 
 function deleteMachineById(machineId: string) {
@@ -476,7 +375,8 @@ function contextMenuEdit() {
   if (type === 'item') {
     startEditItem(targetId);
   } else {
-    startEditMachine(targetId);
+    const machine = store.machines.find(m => m.id === targetId);
+    if (machine) openMachineDrawer(machine);
   }
 }
 
@@ -723,6 +623,16 @@ onUnmounted(() => window.removeEventListener('keydown', onKeyDown));
   border: var(--border-width-sm) solid var(--border-default);
   padding: 4px 6px;
   box-shadow: var(--shadow-node);
+}
+
+.slot-summary {
+  font-size: 10px;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  color: var(--text-muted);
+  padding: 2px 6px;
+  border: var(--border-width-sm) solid var(--border-subtle);
+  margin-left: 4px;
 }
 
 .add-item {
