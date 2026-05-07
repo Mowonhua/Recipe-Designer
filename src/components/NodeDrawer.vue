@@ -431,7 +431,7 @@ function getSlotValidationErrors(slotId: string): SlotValidationError[] {
   if (!machine) return [];
   const inputItems = store.edges
     .filter(e => e.target === props.node?.id && e.target_slot_id === slotId && e.edge_type === 'input')
-    .map(e => ({ item_id: e.source, quantity: e.quantity, slot_index: undefined }));
+    .map(e => ({ item_id: e.source, quantity: e.quantity, slot_index: e.slot_index }));
   return validateMachineRecipeMatch(machine, slot, inputItems);
 }
 
@@ -451,6 +451,7 @@ function getAvailableInputSlots(slotId: string) {
 
 function setEdgeSlotIndex(edgeId: string, index: number | undefined) {
   edgeSlotIndices[edgeId] = index;
+  store.updateEdge(edgeId, { slot_index: index });
 }
 
 function getAvailableOutputSlots(slotId: string) {
@@ -805,10 +806,14 @@ const edgeQtys = reactive<Record<string, number>>({});
 
 function syncEdgeQtys() {
   Object.keys(edgeQtys).forEach(k => delete edgeQtys[k]);
+  Object.keys(edgeSlotIndices).forEach(k => delete edgeSlotIndices[k]);
   if (!props.node) return;
   for (const e of store.edges) {
     if (e.target === props.node.id) {
       edgeQtys[e.id] = e.quantity;
+      if (e.slot_index !== undefined) {
+        edgeSlotIndices[e.id] = e.slot_index;
+      }
     }
   }
 }

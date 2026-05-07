@@ -75,6 +75,7 @@ export interface FlowEdge {
   target_slot_id: string;
   quantity: number;
   edge_type: 'input' | 'byproduct' | 'catalyst';
+  slot_index?: number;
 }
 
 export interface Group {
