@@ -8,6 +8,11 @@ const furnace: Machine = {
   base_speed: 1.0,
   tags: ['thermal', 'basic'],
   allowed_recipe_tags: ['smelting'],
+  slots: [
+    { id: uuidv4(), type: 'input', index: 0, capacity: 100 },
+    { id: uuidv4(), type: 'input', index: 1, capacity: 100 },
+    { id: uuidv4(), type: 'output', index: 0, capacity: 100, is_main_output: true },
+  ],
 };
 
 const assembler: Machine = {
@@ -16,6 +21,11 @@ const assembler: Machine = {
   base_speed: 1.0,
   tags: ['electric', 'basic'],
   allowed_recipe_tags: ['crafting', 'chemistry'],
+  slots: [
+    { id: uuidv4(), type: 'input', index: 0, capacity: 100 },
+    { id: uuidv4(), type: 'input', index: 1, capacity: 100 },
+    { id: uuidv4(), type: 'output', index: 0, capacity: 100, is_main_output: true },
+  ],
 };
 
 export const mockMachines: Machine[] = [furnace, assembler];
