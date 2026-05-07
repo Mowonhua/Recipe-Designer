@@ -447,7 +447,7 @@ export function validateMachineRecipeMatch(
   errors.push(...validateOutputSlotCount(machine, outputCount));
 
   // V3 – Catalyst slot
-  const hasCatalyst = recipe.catalyst_mode !== 'none' || recipe.catalyst !== undefined;
+  const hasCatalyst = recipe.catalyst_mode !== 'none';
   errors.push(...validateCatalystSlot(machine, hasCatalyst));
 
   // V4 – Proliferator slot
