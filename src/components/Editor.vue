@@ -134,6 +134,7 @@
 <script setup lang="ts">
 import { ref, provide, watch, onMounted, onUnmounted, markRaw, computed, nextTick } from 'vue';
 import { onNumberWheel } from '../composables/useWheelNumber';
+import { useDrawerBodyClass } from '../composables/useDrawerBodyClass';
 import { VueFlow, useVueFlow } from '@vue-flow/core';
 import { Background } from '@vue-flow/background';
 import { Controls } from '@vue-flow/controls';
@@ -1154,13 +1155,7 @@ function openBomPanelForNode(nodeId: string, slotId: string | undefined) {
 const drawerVisible = ref(false);
 const drawerNode = ref<any>(null);
 
-watch(drawerVisible, (val) => {
-  if (val) {
-    document.body.classList.add('drawer-open');
-  } else {
-    document.body.classList.remove('drawer-open');
-  }
-});
+useDrawerBodyClass(drawerVisible);
 
 watch(() => bomStore.panelVisible, (val) => {
   if (val) {

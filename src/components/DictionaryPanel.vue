@@ -102,7 +102,6 @@
             <span class="dot machine-dot"></span>
             <span class="item-name">{{ machine.name }}</span>
             <span class="speed-badge">x{{ machine.base_speed }}</span>
-            <span class="slot-summary">{{ store.getMachineSlotSummary(machine) }}</span>
           </div>
         </template>
 
@@ -375,8 +374,10 @@ function contextMenuEdit() {
   if (type === 'item') {
     startEditItem(targetId);
   } else {
-    const machine = store.machines.find(m => m.id === targetId);
-    if (machine) openMachineDrawer(machine);
+    nextTick(() => {
+      const machine = store.machines.find(m => m.id === targetId);
+      if (machine) openMachineDrawer(machine);
+    });
   }
 }
 
@@ -623,16 +624,6 @@ onUnmounted(() => window.removeEventListener('keydown', onKeyDown));
   border: var(--border-width-sm) solid var(--border-default);
   padding: 4px 6px;
   box-shadow: var(--shadow-node);
-}
-
-.slot-summary {
-  font-size: 10px;
-  font-family: var(--font-mono);
-  font-weight: 700;
-  color: var(--text-muted);
-  padding: 2px 6px;
-  border: var(--border-width-sm) solid var(--border-subtle);
-  margin-left: 4px;
 }
 
 .add-item {

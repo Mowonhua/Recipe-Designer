@@ -2,7 +2,7 @@
   <n-drawer
     class="rd-drawer"
     :show="visible"
-    :width="440"
+    :width="520"
     placement="right"
     @update:show="onUpdateShow"
   >
@@ -67,7 +67,7 @@
               v-model:value="slot.capacity"
               size="tiny"
               :min="1"
-              style="width: 72px"
+              style="width: 96px"
               @wheel.prevent="(e: WheelEvent) => onNumberWheel(() => slot.capacity, (v) => slot.capacity = v, 1, 1, e)"
             />
             <span class="slot-field-label">{{ $t('dict.lockedTag') }}</span>
@@ -109,7 +109,7 @@
               v-model:value="slot.capacity"
               size="tiny"
               :min="1"
-              style="width: 72px"
+              style="width: 96px"
               @wheel.prevent="(e: WheelEvent) => onNumberWheel(() => slot.capacity, (v) => slot.capacity = v, 1, 1, e)"
             />
             <span class="slot-field-label">{{ $t('dict.lockedTag') }}</span>
@@ -147,7 +147,7 @@
               v-model:value="slot.capacity"
               size="tiny"
               :min="1"
-              style="width: 72px"
+              style="width: 96px"
               @wheel.prevent="(e: WheelEvent) => onNumberWheel(() => slot.capacity, (v) => slot.capacity = v, 1, 1, e)"
             />
             <span class="slot-field-label">{{ $t('dict.lockedTag') }}</span>
@@ -184,7 +184,7 @@
               v-model:value="slot.capacity"
               size="tiny"
               :min="1"
-              style="width: 72px"
+              style="width: 96px"
               @wheel.prevent="(e: WheelEvent) => onNumberWheel(() => slot.capacity, (v) => slot.capacity = v, 1, 1, e)"
             />
             <span class="slot-field-label">{{ $t('dict.lockedTag') }}</span>
@@ -244,11 +244,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, watch, computed } from 'vue';
+import { ref, reactive, watch, computed, toRef } from 'vue';
 import { NDrawer, NDrawerContent, NInput, NInputNumber, NSelect, NButton } from 'naive-ui';
 import { v4 as uuidv4 } from 'uuid';
 import { useI18n } from 'vue-i18n';
 import { useStore } from '../store';
+import { useDrawerBodyClass } from '../composables/useDrawerBodyClass';
 import type { Machine, MachineSlot } from '../store';
 import { validateMachineSelf } from '../store/slot-validator';
 import type { SlotValidationError } from '../store/slot-validator';
@@ -509,6 +510,9 @@ function onUpdateShow(val: boolean) {
     emit('update:visible', false);
   }
 }
+
+useDrawerBodyClass(toRef(props, 'visible'));
+
 </script>
 
 <style scoped>
