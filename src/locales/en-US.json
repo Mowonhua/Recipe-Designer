@@ -92,6 +92,7 @@
     "noInputEdges": "No input edges",
     "downstream": "Downstream (Consumed by)",
     "byproduct": "(byproduct)",
+    "mainProduct": "(main product)",
     "noDownstream": "No downstream consumers",
     "upstream": "Upstream (Produced by)",
     "noUpstream": "No upstream producers",

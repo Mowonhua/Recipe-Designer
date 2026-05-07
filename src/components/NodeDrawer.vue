@@ -296,7 +296,7 @@
             <div class="group-label" style="margin-top: 8px;">{{ group.slotName }}</div>
             <div v-for="rel in group.items" :key="rel.id" class="relation-row" @click="flyTo(rel.id)">
               <span class="io-dot" :style="{ background: rel.color }"></span>
-              <span class="relation-name">{{ rel.name }}<template v-if="rel.type === 'byproduct'"> {{ $t('drawer.byproduct') }}</template><template v-if="rel.type === 'catalyst'"> {{ $t('drawer.catalyst') }}</template></span>
+              <span class="relation-name">{{ rel.name }}<template v-if="rel.type === 'byproduct'"> {{ $t('drawer.mainProduct') }}</template><template v-if="rel.type === 'catalyst'"> {{ $t('drawer.catalyst') }}</template></span>
               <span class="relation-qty">×{{ rel.quantity }}</span>
             </div>
           </template>

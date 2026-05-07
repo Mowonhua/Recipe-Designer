@@ -92,6 +92,7 @@
     "noInputEdges": "无输入连线",
     "downstream": "下游（产出）",
     "byproduct": "（副产物）",
+    "mainProduct": "（主产物）",
     "noDownstream": "无下游消费者",
     "upstream": "上游（消耗）",
     "noUpstream": "无上游生产者",
