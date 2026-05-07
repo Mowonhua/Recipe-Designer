@@ -150,7 +150,7 @@ import type { Connection, NodeChange, EdgeChange, EdgeMouseEvent } from '@vue-fl
 import type { FlowEdge, RecipeSlot } from '../store';
 import { useStore } from '../store';
 import { useI18n } from 'vue-i18n';
-import { mockNodes, mockEdges, mockMachines } from '../data/mock-data';
+import { mockNodes, mockEdges, mockMachines, mockGlobalEffects, mockProliferators } from '../data/mock-data';
 import ItemNode from './ItemNode.vue';
 import NodePopover from './NodePopover.vue';
 import NodeDrawer from './NodeDrawer.vue';
@@ -1314,7 +1314,13 @@ function onKeydown(e: KeyboardEvent) {
 // --- Lifecycle ---
 onMounted(() => {
   // Seed mock data
-  store.seedData({ nodes: mockNodes, edges: mockEdges, machines: mockMachines });
+  store.seedData({
+    nodes: mockNodes,
+    edges: mockEdges,
+    machines: mockMachines,
+    global_effects: mockGlobalEffects,
+    proliferators: mockProliferators,
+  });
   applyLayout();
   syncFromStore();
 
