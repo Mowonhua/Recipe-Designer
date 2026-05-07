@@ -26,12 +26,22 @@ export interface TagPool {
   machine_tags: string[];
 }
 
+export interface MachineSlot {
+  id: string;
+  type: 'input' | 'output' | 'catalyst' | 'proliferator';
+  index: number;
+  capacity: number;
+  is_main_output?: boolean;
+  locked_item_tag?: string;
+}
+
 export interface Machine {
   id: string;
   name: string;
   base_speed: number;
   tags: string[];
   allowed_recipe_tags: string[];
+  slots?: MachineSlot[];
 }
 
 export interface RecipeSlot {
@@ -41,7 +51,7 @@ export interface RecipeSlot {
   machine_id: string;
   tags: string[];
   primary_output_quantity: number;
-  secondary_outputs: { item_id: string; quantity: number }[];
+  secondary_outputs: { item_id: string; quantity: number; slot_index?: number }[];
   catalyst_mode: 'none' | 'optional' | 'required';
   catalyst?: { item_id: string; quantity: number; speed_multiplier?: number };
 }
@@ -475,6 +485,59 @@ export const useStore = defineStore('recipe-designer', () => {
     }
   }
 
+  function createDefaultSlots(): MachineSlot[] {
+    return [
+      { id: uuidv4(), type: 'input', index: 0, capacity: 100 },
+      { id: uuidv4(), type: 'input', index: 1, capacity: 100 },
+      { id: uuidv4(), type: 'output', index: 0, capacity: 100, is_main_output: true },
+    ];
+  }
+
+  function addMachineSlot(machineId: string, slot: MachineSlot) {
+    const machine = machines.value.find(m => m.id === machineId);
+    if (!machine) return;
+    if (!machine.slots) machine.slots = [];
+    const sameType = machine.slots.filter(s => s.type === slot.type);
+    slot.index = sameType.length;
+    machine.slots.push(slot);
+    changeCounter.value++;
+  }
+
+  function removeMachineSlot(machineId: string, slotId: string) {
+    const machine = machines.value.find(m => m.id === machineId);
+    if (!machine?.slots) return;
+    const idx = machine.slots.findIndex(s => s.id === slotId);
+    if (idx < 0) return;
+    const removedType = machine.slots[idx].type;
+    machine.slots.splice(idx, 1);
+    // Renumber indices for remaining slots of the same type
+    let counter = 0;
+    for (const s of machine.slots) {
+      if (s.type === removedType) {
+        s.index = counter++;
+      }
+    }
+    changeCounter.value++;
+  }
+
+  function updateMachineSlot(machineId: string, slotId: string, changes: Partial<MachineSlot>) {
+    const machine = machines.value.find(m => m.id === machineId);
+    if (!machine?.slots) return;
+    const slot = machine.slots.find(s => s.id === slotId);
+    if (!slot) return;
+    Object.assign(slot, changes);
+    changeCounter.value++;
+  }
+
+  function getMachineSlotSummary(machine: Machine): string {
+    const slots = machine.slots || [];
+    const inputs = slots.filter(s => s.type === 'input').length;
+    const outputs = slots.filter(s => s.type === 'output').length;
+    const catalysts = slots.filter(s => s.type === 'catalyst').length;
+    const proliferators = slots.filter(s => s.type === 'proliferator').length;
+    return `${inputs}入/${outputs}出/${catalysts}催/${proliferators}增`;
+  }
+
   function addGlobalEffect(effect?: Partial<GlobalEffect>): GlobalEffect {
     const next: GlobalEffect = {
       id: effect?.id || uuidv4(),
@@ -776,6 +839,11 @@ export const useStore = defineStore('recipe-designer', () => {
     addMachine,
     updateMachine,
     deleteMachine,
+    createDefaultSlots,
+    addMachineSlot,
+    removeMachineSlot,
+    updateMachineSlot,
+    getMachineSlotSummary,
     addGlobalEffect,
     updateGlobalEffect,
     deleteGlobalEffect,
