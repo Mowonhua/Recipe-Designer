@@ -273,6 +273,38 @@ function relayout() {
     computeDepth(id);
   }
 
+  // Adjust byproduct depths: a byproduct's level = max(parent product level, its own level from input edges).
+  // Iterate until stable to handle byproduct chains and cascading input propagation.
+  const byproductEdges = store.edges.filter(e => nodeIds.has(e.source) && nodeIds.has(e.target) && e.edge_type === 'byproduct');
+  let changed = true;
+  let iter = 0;
+  while (changed && iter < 200) {
+    changed = false;
+    iter++;
+
+    // Byproduct rule: target depth >= source depth (same level as the recipe that produces it)
+    for (const e of byproductEdges) {
+      const sd = depth.get(e.source) ?? 0;
+      const td = depth.get(e.target) ?? 0;
+      if (td < sd) {
+        depth.set(e.target, sd);
+        changed = true;
+      }
+    }
+
+    // Re-propagate input edges: if a source moved deeper, its consumer must be at least source + 1
+    for (const e of store.edges) {
+      if (!nodeIds.has(e.source) || !nodeIds.has(e.target)) continue;
+      if (e.edge_type !== 'input' && e.edge_type !== 'catalyst') continue;
+      const sd = depth.get(e.source) ?? 0;
+      const td = depth.get(e.target) ?? 0;
+      if (td < sd + 1) {
+        depth.set(e.target, sd + 1);
+        changed = true;
+      }
+    }
+  }
+
   // Group nodes by depth level
   const levels = new Map<number, string[]>();
   let maxLevel = 0;
