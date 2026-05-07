@@ -465,6 +465,9 @@ export const useStore = defineStore('recipe-designer', () => {
   }
 
   function addMachine(machine: Machine) {
+    if (!machine.slots || machine.slots.length === 0) {
+      machine.slots = createDefaultSlots();
+    }
     machines.value.push(machine);
     changeCounter.value++;
   }
@@ -498,14 +501,14 @@ export const useStore = defineStore('recipe-designer', () => {
     if (!machine) return;
     if (!machine.slots) machine.slots = [];
     const sameType = machine.slots.filter(s => s.type === slot.type);
-    slot.index = sameType.length;
-    machine.slots.push(slot);
+    machine.slots.push({ ...slot, index: sameType.length });
     changeCounter.value++;
   }
 
   function removeMachineSlot(machineId: string, slotId: string) {
     const machine = machines.value.find(m => m.id === machineId);
-    if (!machine?.slots) return;
+    if (!machine) return;
+    if (!machine.slots) return;
     const idx = machine.slots.findIndex(s => s.id === slotId);
     if (idx < 0) return;
     const removedType = machine.slots[idx].type;
@@ -522,7 +525,8 @@ export const useStore = defineStore('recipe-designer', () => {
 
   function updateMachineSlot(machineId: string, slotId: string, changes: Partial<MachineSlot>) {
     const machine = machines.value.find(m => m.id === machineId);
-    if (!machine?.slots) return;
+    if (!machine) return;
+    if (!machine.slots) return;
     const slot = machine.slots.find(s => s.id === slotId);
     if (!slot) return;
     Object.assign(slot, changes);
