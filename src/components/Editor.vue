@@ -1155,7 +1155,7 @@ function openBomPanelForNode(nodeId: string, slotId: string | undefined) {
 const drawerVisible = ref(false);
 const drawerNode = ref<any>(null);
 
-useDrawerBodyClass(drawerVisible);
+useDrawerBodyClass(drawerVisible, 420);
 
 watch(() => bomStore.panelVisible, (val) => {
   if (val) {

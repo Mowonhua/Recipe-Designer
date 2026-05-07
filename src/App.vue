@@ -88,13 +88,13 @@ html, body, #app {
   transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), background-color var(--transition-fast), color var(--transition-fast), box-shadow var(--transition-fast);
 }
 body.drawer-open .theme-toggle {
-  transform: translateX(-420px);
+  transform: translateX(calc(-1 * var(--drawer-width, 420px)));
 }
 body.bom-panel-open .theme-toggle {
   transform: translateX(-480px);
 }
 body.drawer-open.bom-panel-open .theme-toggle {
-  transform: translateX(-480px);
+  transform: translateX(calc(-1 * max(var(--drawer-width, 420px), 480px)));
 }
 .theme-toggle:hover {
   background-color: var(--bg-color);

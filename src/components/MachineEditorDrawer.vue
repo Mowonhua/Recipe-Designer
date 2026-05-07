@@ -511,7 +511,7 @@ function onUpdateShow(val: boolean) {
   }
 }
 
-useDrawerBodyClass(toRef(props, 'visible'));
+useDrawerBodyClass(toRef(props, 'visible'), 520);
 
 </script>
 
