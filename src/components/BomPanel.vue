@@ -210,7 +210,10 @@ const involvedMachines = computed(() => {
     visit(bomStore.pendingRequest.nodeId, bomStore.pendingRequest.slotId);
   }
 
-  return store.machines.filter(machine => ids.has(machine.id));
+  return store.machines.filter(machine =>
+    ids.has(machine.id) &&
+    (machine.slots || []).some(s => s.type === 'proliferator')
+  );
 });
 
 function warnIcon(type: BomWarning['type']): string {
