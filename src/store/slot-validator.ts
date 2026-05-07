@@ -211,25 +211,26 @@ export function validateSlotIndexRange(
   slotType: string,
 ): SlotValidationError[] {
   const slots = slotsByType(machine, slotType as MachineSlot['type']);
-  const maxIndex = slots.length - 1;
 
-  if (slotIndex < 0 || slotIndex > maxIndex) {
+  // No slots of this type at all on the machine
+  if (slots.length === 0) {
     return [
       {
         code: 'V6',
-        message: `Slot index ${slotIndex} is out of range for type "${slotType}" (valid range: 0–${maxIndex >= 0 ? maxIndex : 'none'})`,
+        message: `Machine has no slots of type "${slotType}", cannot assign slot index ${slotIndex}`,
         slotType,
         slotIndex,
       },
     ];
   }
 
-  // Also warn when the slot type exists but has no slots at all (maxIndex === -1)
-  if (slots.length === 0) {
+  const maxIndex = slots.length - 1;
+
+  if (slotIndex < 0 || slotIndex > maxIndex) {
     return [
       {
         code: 'V6',
-        message: `Machine has no slots of type "${slotType}", cannot assign slot index ${slotIndex}`,
+        message: `Slot index ${slotIndex} is out of range for type "${slotType}" (valid range: 0–${maxIndex})`,
         slotType,
         slotIndex,
       },
