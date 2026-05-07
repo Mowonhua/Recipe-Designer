@@ -304,6 +304,7 @@ const allTagOptions = computed(() => {
   const poolSet = new Set([
     ...store.tag_pool.recipe_tags,
     ...store.tag_pool.machine_tags,
+    ...form.tags,
   ]);
   for (const t of form.allowed_recipe_tags) {
     if (t.trim()) poolSet.add(t.trim());
@@ -422,7 +423,7 @@ function buildMachine(): Machine {
     base_speed: form.base_speed,
     tags: [...form.tags],
     allowed_recipe_tags: [...form.allowed_recipe_tags],
-    slots: JSON.parse(JSON.stringify(slots.value)),
+    slots: structuredClone(slots.value),
   };
 }
 
@@ -488,7 +489,7 @@ watch(
       form.tags = [...m.tags];
       form.allowed_recipe_tags = [...m.allowed_recipe_tags];
       slots.value = (m.slots && m.slots.length > 0)
-        ? JSON.parse(JSON.stringify(m.slots))
+        ? structuredClone(m.slots)
         : [...(store.createDefaultSlots())];
     } else {
       // Create mode
@@ -645,6 +646,7 @@ function onUpdateShow(val: boolean) {
   font-family: var(--font-mono);
   font-size: 12px;
   font-weight: 700;
+  /* white text on red alert background — must be readable in both themes */
   color: #ffffff;
   padding: var(--spacing-xs) 0;
 }
