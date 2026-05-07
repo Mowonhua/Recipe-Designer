@@ -281,20 +281,26 @@
         <!-- Relations Tab -->
         <n-tab-pane name="relations" :tab="$t('drawer.tabRelations')">
           <div class="section-label">{{ $t('drawer.downstream') }}</div>
-          <div v-for="rel in downstream" :key="rel.id" class="relation-row" @click="flyTo(rel.id)">
-            <span class="io-dot" :style="{ background: rel.color }"></span>
-            <span class="relation-name">{{ rel.name }}<template v-if="rel.type === 'byproduct'"> {{ $t('drawer.byproduct') }}</template><template v-if="rel.type === 'catalyst'"> {{ $t('drawer.catalyst') }}</template></span>
-            <span class="relation-qty">×{{ rel.quantity }}</span>
-          </div>
-          <div v-if="downstream.length === 0" class="no-data">{{ $t('drawer.noDownstream') }}</div>
+          <template v-for="group in downstreamBySlot" :key="group.slotId">
+            <div class="group-label" style="margin-top: 8px;">{{ group.slotName }}</div>
+            <div v-for="rel in group.items" :key="rel.id" class="relation-row" @click="flyTo(rel.id)">
+              <span class="io-dot" :style="{ background: rel.color }"></span>
+              <span class="relation-name">{{ rel.name }}<template v-if="rel.type === 'byproduct'"> {{ $t('drawer.byproduct') }}</template><template v-if="rel.type === 'catalyst'"> {{ $t('drawer.catalyst') }}</template></span>
+              <span class="relation-qty">×{{ rel.quantity }}</span>
+            </div>
+          </template>
+          <div v-if="downstreamBySlot.length === 0" class="no-data">{{ $t('drawer.noDownstream') }}</div>
 
           <div class="section-label" style="margin-top: 16px;">{{ $t('drawer.upstream') }}</div>
-          <div v-for="rel in upstream" :key="rel.id" class="relation-row" @click="flyTo(rel.id)">
-            <span class="io-dot" :style="{ background: rel.color }"></span>
-            <span class="relation-name">{{ rel.name }}<template v-if="rel.type === 'byproduct'"> {{ $t('drawer.byproduct') }}</template><template v-if="rel.type === 'catalyst'"> {{ $t('drawer.catalyst') }}</template></span>
-            <span class="relation-qty">×{{ rel.quantity }}</span>
-          </div>
-          <div v-if="upstream.length === 0" class="no-data">{{ $t('drawer.noUpstream') }}</div>
+          <template v-for="group in upstreamBySlot" :key="group.slotId">
+            <div class="group-label" style="margin-top: 8px;">{{ group.slotName }}</div>
+            <div v-for="rel in group.items" :key="rel.id" class="relation-row" @click="flyTo(rel.id)">
+              <span class="io-dot" :style="{ background: rel.color }"></span>
+              <span class="relation-name">{{ rel.name }}<template v-if="rel.type === 'byproduct'"> {{ $t('drawer.byproduct') }}</template><template v-if="rel.type === 'catalyst'"> {{ $t('drawer.catalyst') }}</template></span>
+              <span class="relation-qty">×{{ rel.quantity }}</span>
+            </div>
+          </template>
+          <div v-if="upstreamBySlot.length === 0" class="no-data">{{ $t('drawer.noUpstream') }}</div>
         </n-tab-pane>
       </n-tabs>
     </n-drawer-content>
@@ -838,24 +844,113 @@ function deleteEdgeById(edgeId: string) {
 }
 
 // --- Relations ---
-const upstream = computed(() => {
+interface RelationItem {
+  id: string;
+  name: string;
+  color: string;
+  quantity: number;
+  type: 'input' | 'byproduct' | 'catalyst';
+}
+
+interface SlotGroup {
+  slotId: string;
+  slotName: string;
+  items: RelationItem[];
+}
+
+const upstreamBySlot = computed(() => {
   if (!props.node) return [];
-  return store.edges
-    .filter(e => e.target === props.node!.id)
-    .map(e => {
-      const src = store.nodes.find(n => n.id === e.source);
-      return { id: e.source, name: src?.name || '?', color: src?.color || '#64748b', quantity: e.quantity, type: e.edge_type };
-    });
+  const edges = store.edges.filter(e => e.target === props.node!.id);
+  const slotMap = new Map<string, RelationItem[]>();
+  const slotOrder: string[] = [];
+  for (const slot of props.node.slots) {
+    slotMap.set(slot.id, []);
+    slotOrder.push(slot.id);
+  }
+  const unknownKey = '__unknown__';
+  slotMap.set(unknownKey, []);
+
+  for (const edge of edges) {
+    const src = store.nodes.find(n => n.id === edge.source);
+    const item: RelationItem = {
+      id: edge.source,
+      name: src?.name || '?',
+      color: src?.color || '#64748b',
+      quantity: edge.quantity,
+      type: edge.edge_type,
+    };
+    const slotId = edge.target_slot_id;
+    if (slotMap.has(slotId)) {
+      slotMap.get(slotId)!.push(item);
+    } else {
+      slotMap.get(unknownKey)!.push(item);
+    }
+  }
+
+  const result: SlotGroup[] = [];
+  for (const sid of slotOrder) {
+    const items = slotMap.get(sid)!;
+    if (items.length > 0) {
+      result.push({ slotId: sid, slotName: props.node.slots.find(s => s.id === sid)?.name || '?', items });
+    }
+  }
+  if (slotMap.get(unknownKey)!.length > 0) {
+    result.push({ slotId: unknownKey, slotName: '?', items: slotMap.get(unknownKey)! });
+  }
+  return result;
 });
 
-const downstream = computed(() => {
+const downstreamBySlot = computed(() => {
   if (!props.node) return [];
-  return store.edges
-    .filter(e => e.source === props.node!.id)
-    .map(e => {
-      const tgt = store.nodes.find(n => n.id === e.target);
-      return { id: e.target, name: tgt?.name || '?', color: tgt?.color || '#64748b', quantity: e.quantity, type: e.edge_type };
-    });
+  const edges = store.edges.filter(e => e.source === props.node!.id);
+  const slotMap = new Map<string, RelationItem[]>();
+  const slotOrder: string[] = [];
+  for (const slot of props.node.slots) {
+    slotMap.set(slot.id, []);
+    slotOrder.push(slot.id);
+  }
+  const unknownKey = '__unknown__';
+  slotMap.set(unknownKey, []);
+
+  for (const edge of edges) {
+    const tgt = store.nodes.find(n => n.id === edge.target);
+    const item: RelationItem = {
+      id: edge.target,
+      name: tgt?.name || '?',
+      color: tgt?.color || '#64748b',
+      quantity: edge.quantity,
+      type: edge.edge_type,
+    };
+    let foundSlot: string | null = null;
+    for (const slot of props.node.slots) {
+      if (slot.secondary_outputs.some(so => so.item_id === edge.target)) {
+        foundSlot = slot.id;
+        break;
+      }
+    }
+    if (foundSlot && slotMap.has(foundSlot)) {
+      slotMap.get(foundSlot)!.push(item);
+    } else {
+      const activeId = props.node.active_slot_id || props.node.slots[0]?.id;
+      if (activeId && slotMap.has(activeId)) {
+        slotMap.get(activeId)!.push(item);
+      } else {
+        slotMap.get(unknownKey)!.push(item);
+      }
+    }
+  }
+
+  const result: SlotGroup[] = [];
+  for (const sid of slotOrder) {
+    const items = slotMap.get(sid)!;
+    if (items.length > 0) {
+      result.push({ slotId: sid, slotName: props.node.slots.find(s => s.id === sid)?.name || '?', items });
+    }
+  }
+  if (slotMap.get(unknownKey)!.length > 0) {
+    result.push({ slotId: unknownKey, slotName: '?', items: slotMap.get(unknownKey)! });
+  }
+  return result;
 });
 
 function flyTo(nodeId: string) {
