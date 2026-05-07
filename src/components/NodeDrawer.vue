@@ -105,6 +105,12 @@
                   :options="machineOptions"
                   size="small"
                 />
+                <div v-if="getSlotValidationErrors(slot.id).length > 0" class="slot-warnings">
+                  <div v-for="err in getSlotValidationErrors(slot.id)" :key="err.code" class="slot-warn-item">
+                    <span class="slot-warn-code">{{ err.code }}</span>
+                    {{ err.message }}
+                  </div>
+                </div>
               </div>
             </div>
             <div class="form-group">
@@ -190,6 +196,17 @@
                       {{ so.quantity }}
                     </template>
                   </span>
+                  <select
+                    v-if="getAvailableOutputSlots(slot.id).length > 0"
+                    :value="so.slot_index ?? ''"
+                    class="so-slot-index"
+                    @change="(e: Event) => setByproductSlotIndex(slot.id, i, (e.target as HTMLSelectElement).value)"
+                  >
+                    <option value="">{{ $t('drawer.auto') }}</option>
+                    <option v-for="opt in getAvailableOutputSlots(slot.id)" :key="opt.value" :value="opt.value">
+                      {{ opt.label }}
+                    </option>
+                  </select>
                   <span class="so-card-remove close-icon" @click="removeSecondaryOutput(slot.id, i)"></span>
                 </div>
                 <div class="so-card so-card-add" :class="{ open: addingByproduct[slot.id] }" @click.stop="startAddByproduct(slot.id)">
@@ -237,6 +254,16 @@
             <div class="group-label">{{ slot.name }}</div>
             <div v-for="edge in getSlotEdges(slot.id)" :key="edge.id" class="edge-row">
               <span class="edge-source">{{ getNodeName(edge.source) }}</span>
+              <n-select
+                v-if="getAvailableInputSlots(slot.id).length > 0"
+                :value="edgeSlotIndices[edge.id] ?? undefined"
+                :options="getAvailableInputSlots(slot.id)"
+                size="tiny"
+                placeholder="#"
+                clearable
+                style="width: 64px"
+                @update:value="(v: number | null) => setEdgeSlotIndex(edge.id, v ?? undefined)"
+              />
               <n-input-number
                 v-model:value="edgeQtys[edge.id]"
                 size="tiny"
@@ -296,6 +323,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { useI18n } from 'vue-i18n';
 import { useStore } from '../store';
 import type { ItemNode, RecipeSlot, FlowEdge } from '../store';
+import { validateMachineRecipeMatch, type SlotValidationError } from '../store/slot-validator';
 import ConfirmDialog from './ConfirmDialog.vue';
 import { onNumberWheel } from '../composables/useWheelNumber';
 
@@ -381,7 +409,7 @@ interface SlotEdit {
   catalyst_item_id?: string;
   catalyst_quantity: number;
   catalyst_speed_multiplier: number;
-  secondary_outputs: { item_id: string; quantity: number }[];
+  secondary_outputs: { item_id: string; quantity: number; slot_index?: number }[];
 }
 const editSlots = reactive<Record<string, SlotEdit>>({});
 const slotTagInputs = reactive<Record<string, string>>({});
@@ -393,6 +421,60 @@ const byproductQtyRefs: Record<string, HTMLInputElement | null> = {};
 
 function setByproductQtyRef(key: string, el: HTMLInputElement | null) {
   byproductQtyRefs[key] = el;
+}
+
+// --- Slot validation ---
+function getSlotValidationErrors(slotId: string): SlotValidationError[] {
+  const slot = props.node?.slots.find(s => s.id === slotId);
+  if (!slot || !slot.machine_id) return [];
+  const machine = store.machines.find(m => m.id === slot.machine_id);
+  if (!machine) return [];
+  const inputItems = store.edges
+    .filter(e => e.target === props.node?.id && e.target_slot_id === slotId && e.edge_type === 'input')
+    .map(e => ({ item_id: e.source, quantity: e.quantity, slot_index: undefined }));
+  return validateMachineRecipeMatch(machine, slot, inputItems);
+}
+
+// --- Ordered slot_index binding ---
+const edgeSlotIndices = reactive<Record<string, number | undefined>>({});
+
+function getAvailableInputSlots(slotId: string) {
+  const slot = props.node?.slots.find(s => s.id === slotId);
+  if (!slot?.machine_id) return [];
+  const machine = store.machines.find(m => m.id === slot.machine_id);
+  if (!machine?.slots) return [];
+  return machine.slots
+    .filter(s => s.type === 'input')
+    .sort((a, b) => a.index - b.index)
+    .map(s => ({ label: `#${s.index}`, value: s.index }));
+}
+
+function setEdgeSlotIndex(edgeId: string, index: number | undefined) {
+  edgeSlotIndices[edgeId] = index;
+}
+
+function getAvailableOutputSlots(slotId: string) {
+  const slot = props.node?.slots.find(s => s.id === slotId);
+  if (!slot?.machine_id) return [];
+  const machine = store.machines.find(m => m.id === slot.machine_id);
+  if (!machine?.slots) return [];
+  return machine.slots
+    .filter(s => s.type === 'output' && !s.is_main_output)
+    .sort((a, b) => a.index - b.index)
+    .map(s => ({ label: `#${s.index}`, value: s.index }));
+}
+
+function setByproductSlotIndex(slotId: string, index: number, value: string) {
+  const edits = editSlots[slotId];
+  if (!edits) return;
+  const so = edits.secondary_outputs?.[index];
+  if (!so) return;
+  so.slot_index = value ? Number(value) : undefined;
+  const slot = props.node?.slots.find(s => s.id === slotId);
+  if (slot?.secondary_outputs[index]) {
+    slot.secondary_outputs[index].slot_index = value ? Number(value) : undefined;
+  }
+  store.changeCounter++;
 }
 
 const colorPresets = ['#f0883e', '#58a6ff', '#3fb950', '#e0555a', '#a371f7', '#e6c34a', '#768390', '#f778ba'];
@@ -1051,5 +1133,47 @@ function flyTo(nodeId: string) {
   border: var(--border-width-md) dashed var(--border-default);
   text-align: center;
   font-weight: 800;
+}
+
+/* ---- Slot validation warnings ---- */
+.slot-warnings {
+  margin-top: var(--spacing-sm);
+  padding: var(--spacing-sm);
+  border: var(--border-width-md) solid var(--accent-amber);
+  background: color-mix(in srgb, var(--accent-amber) 10%, var(--bg-surface));
+}
+
+.slot-warn-item {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-primary);
+  padding: 2px 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.slot-warn-code {
+  background: var(--accent-amber);
+  color: var(--bg-color);
+  font-weight: 900;
+  padding: 0 4px;
+  font-size: 10px;
+  flex-shrink: 0;
+}
+
+/* ---- Byproduct slot index ---- */
+.so-slot-index {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  background: var(--bg-input);
+  color: var(--text-primary);
+  border: var(--border-width-md) solid var(--border-default);
+  padding: 0 4px;
+  height: 24px;
+  cursor: pointer;
+  flex-shrink: 0;
 }
 </style>

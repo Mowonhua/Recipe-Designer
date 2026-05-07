@@ -108,7 +108,8 @@
     "secondaryOutputs": "副产物输出",
     "addSecondaryOutput": "+ 添加",
     "deleteSecondaryOutput": "删除",
-    "unknown": "未知"
+    "unknown": "未知",
+    "auto": "自动"
   },
   "popover": {
     "noTags": "无标签",

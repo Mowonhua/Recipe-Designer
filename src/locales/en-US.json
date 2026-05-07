@@ -108,7 +108,8 @@
     "secondaryOutputs": "Secondary Outputs",
     "addSecondaryOutput": "+ Add",
     "deleteSecondaryOutput": "Delete",
-    "unknown": "Unknown"
+    "unknown": "Unknown",
+    "auto": "Auto"
   },
   "popover": {
     "noTags": "no tags",
