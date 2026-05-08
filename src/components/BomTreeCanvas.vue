@@ -1,5 +1,5 @@
 <template>
-  <div class="bom-tree-canvas" ref="canvasRef" @mousedown="onMouseDown" @wheel="onWheel">
+  <div class="bom-tree-canvas" ref="canvasRef" @mousedown.prevent="onMouseDown" @wheel="onWheel">
     <div
       class="canvas-world"
       :style="{
@@ -357,6 +357,7 @@ function layoutTree(root: BomTreeNode): {
    Interaction Handlers
    ============================================ */
 function onMouseDown(e: MouseEvent) {
+  if (e.button !== 0) return;
   dragging = true;
   lastX = e.clientX;
   lastY = e.clientY;
@@ -423,6 +424,8 @@ const worldTransform = computed(() => {
   background-size: 32px 32px;
   overflow: hidden;
   cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .bom-tree-canvas:active {

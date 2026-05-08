@@ -247,7 +247,8 @@
     "tableRateMin": "Rate/min",
     "tableMachines": "Machines",
     "noRecipe": "(no recipe)",
-    "dragToPan": "Drag to pan"
+    "dragToPan": "Drag to pan",
+    "expandTree": "Expand production tree"
   },
   "validation": {
     "edgeTargetMissing": "Edge \"{edgeId}\" targets node \"{targetId}\" which does not exist.",

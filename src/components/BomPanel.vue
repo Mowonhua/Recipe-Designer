@@ -99,13 +99,37 @@
 
       <!-- BOM Tree -->
       <div v-if="result" class="tree-block">
-        <div class="section-label">{{ $t('bom.productionTree') }}</div>
+        <div class="section-label">
+          {{ $t('bom.productionTree') }}
+          <button class="tree-expand-btn" @click="treeExpanded = true" :title="$t('bom.expandTree')">
+            <span class="expand-icon">⛶</span>
+          </button>
+        </div>
         <BomTreeCanvas
           :tree="result.tree"
           :mode="result.request.mode"
           @highlight="(id: string | null) => bomStore.setHighlightedNodeId(id)"
         />
       </div>
+
+      <!-- Expanded tree modal -->
+      <n-modal
+        v-model:show="treeExpanded"
+        preset="card"
+        :title="$t('bom.productionTree')"
+        style="width: min(95vw, 1400px); max-height: 90vh;"
+        :mask-closable="true"
+        size="huge"
+      >
+        <div class="expanded-tree-wrapper">
+          <BomTreeCanvas
+            v-if="result"
+            :tree="result.tree"
+            :mode="result.request.mode"
+            @highlight="(id: string | null) => bomStore.setHighlightedNodeId(id)"
+          />
+        </div>
+      </n-modal>
 
       <!-- Summary Table -->
       <div v-if="result" class="summary-block">
@@ -132,6 +156,7 @@ import { onNumberWheel } from '../composables/useWheelNumber';
 import {
   NDrawer, NDrawerContent,
   NInputNumber, NSelect, NButton,
+  NModal,
 } from 'naive-ui';
 import { useI18n } from 'vue-i18n';
 import { useBomStore } from '../store/bom-store';
@@ -150,6 +175,7 @@ const editBalancing = ref<BalancingStrategy>('integer-rounding');
 const editByproduct = ref<ByproductStrategy>('ignore-annotate');
 const editProliferatorsEnabled = ref<'disabled' | 'enabled'>('disabled');
 const editProliferatorAssignments = ref<Record<string, string>>({});
+const treeExpanded = ref(false);
 
 const modeOptions = computed(() => [
   { label: t('bom.modeOneTime'), value: 'one-time' as const },
@@ -341,6 +367,42 @@ watch(() => bomStore.pendingRequest, (req) => {
   flex: 1;
   min-height: 0;
   margin-bottom: var(--spacing-lg);
+}
+
+.tree-expand-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  margin-left: auto;
+  border: var(--border-width-sm) solid var(--border-default);
+  background: var(--bg-surface);
+  cursor: pointer;
+  box-shadow: var(--shadow-node);
+  transition: background var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.tree-expand-btn:hover {
+  background: var(--bg-hover);
+  box-shadow: var(--shadow-node-hover);
+}
+
+.expand-icon {
+  font-size: 14px;
+  line-height: 1;
+  color: var(--text-muted);
+}
+
+.expanded-tree-wrapper {
+  height: 75vh;
+  min-height: 400px;
+}
+
+.section-label {
+  display: flex;
+  align-items: center;
 }
 
 .summary-block {

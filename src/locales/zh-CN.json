@@ -247,7 +247,8 @@
     "tableRateMin": "速率/分钟",
     "tableMachines": "机器",
     "noRecipe": "（无配方）",
-    "dragToPan": "拖拽平移"
+    "dragToPan": "拖拽平移",
+    "expandTree": "展开生产树"
   },
   "validation": {
     "edgeTargetMissing": "连线 \"{edgeId}\" 指向的节点 \"{targetId}\" 不存在。",
