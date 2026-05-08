@@ -30,7 +30,7 @@
             <span class="n-qty" v-if="ln.node.executionCount !== undefined">×{{ ln.node.executionCount }}</span>
             <span class="n-mul prolif" v-if="ln.node.proliferatorMultiplier">×{{ ln.node.proliferatorMultiplier }}</span>
             <span class="n-mul global" v-if="ln.node.globalYieldMultiplier">×{{ fmtNum(ln.node.globalYieldMultiplier) }}</span>
-            <span class="n-total" v-if="ln.node.executionCount !== undefined || ln.node.isRawMaterial">
+            <span class="n-total" v-if="ln.node.executionCount !== undefined || ln.node.isRawMaterial || ln.node.isByproduct">
               = {{ ln.node.targetQuantity }}
             </span>
           </template>
@@ -85,6 +85,16 @@
               }"
             >×{{ fmtNum(edge.recipeQuantity) }}</div>
           </template>
+          <!-- Byproduct edge labels -->
+          <template v-for="(bp, bpIdx) in visibleBpLabels(ln)" :key="'bplbl-' + bp.itemId">
+            <div
+              class="edge-label bp-label"
+              :style="{
+                left: (ln.x + HALF_INDENT + 4) + 'px',
+                top: (ln.children[ln.inputChildCount + bpIdx]?.y ?? 0) + 'px',
+              }"
+            >×{{ fmtNum(bp.recipeQuantity) }}</div>
+          </template>
         </template>
       </template>
     </div>
@@ -132,6 +142,7 @@ interface LayoutNode {
   w: number;
   depth: number;
   children: LayoutNode[];
+  inputChildCount: number;
   catalyst?: BomTreeEdge;
   byproducts: BomByproduct[];
   proliferator?: BomTreeEdge;
@@ -198,6 +209,12 @@ function lastChildMidY(ln: LayoutNode): number {
   return last.y + NODE_H / 2;
 }
 
+function visibleBpLabels(ln: LayoutNode): BomByproduct[] {
+  return ln.byproducts.filter(
+    bp => !ln.node.inputs.some(inp => inp.isByproduct && inp.sourceNodeId === bp.itemId),
+  );
+}
+
 
 /* ============================================
    Measurement
@@ -233,7 +250,7 @@ function measureNodeWidth(node: BomTreeNode): number {
     if (node.globalYieldMultiplier) {
       parts.push(`<span class="n-mul global">×${fmtNum(node.globalYieldMultiplier)}</span>`);
     }
-    if (node.executionCount !== undefined || node.isRawMaterial) {
+    if (node.executionCount !== undefined || node.isRawMaterial || node.isByproduct) {
       parts.push(`<span class="n-total">= ${node.targetQuantity}</span>`);
     }
   }
@@ -317,6 +334,34 @@ function layoutTree(root: BomTreeNode): {
       }
     }
 
+    const inputChildCount = children.length;
+
+    // Add byproduct annotations as visual children (skip those already in inputs — independent-output mode)
+    for (const bp of node.byproducts) {
+      const alreadyInInputs = node.inputs.some(
+        inp => inp.isByproduct && inp.sourceNodeId === bp.itemId,
+      );
+      if (alreadyInInputs) continue;
+
+      const bpLeaf: BomTreeNode = {
+        nodeId: bp.itemId,
+        nodeName: bp.itemName,
+        nodeColor: bp.itemColor,
+        slotId: '',
+        slotName: '—',
+        depth: depth + 1,
+        targetQuantity: bp.quantity,
+        inputs: [],
+        byproducts: [],
+        isRawMaterial: false,
+        isByproduct: true,
+        isSurplus: false,
+        isCatalystBlocked: false,
+        isCycleDetected: false,
+      };
+      children.push(build(bpLeaf, depth + 1));
+    }
+
     const ln: LayoutNode = {
       node,
       x: 0,
@@ -324,6 +369,7 @@ function layoutTree(root: BomTreeNode): {
       w,
       depth,
       children,
+      inputChildCount,
       catalyst: node.catalyst,
       byproducts: node.byproducts,
       proliferator: node.proliferator,
@@ -529,6 +575,10 @@ const worldTransform = computed(() => {
   white-space: nowrap;
   pointer-events: none;
   z-index: 1;
+}
+
+.edge-label.bp-label {
+  color: var(--accent-tan);
 }
 
 /* ============================================

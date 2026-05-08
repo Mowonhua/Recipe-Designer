@@ -64,6 +64,7 @@ export interface BomByproduct {
   itemName: string;
   itemColor: string;
   quantity: number;
+  recipeQuantity: number;
   offsetConsumed?: number;
 }
 

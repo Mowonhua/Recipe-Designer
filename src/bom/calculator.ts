@@ -598,6 +598,7 @@ function collectByproductsContinuous(
       itemName: node?.name || so.item_id,
       itemColor: node?.color || '#64748b',
       quantity,
+      recipeQuantity: so.quantity,
     };
 
     if (strategy === 'offset') {
