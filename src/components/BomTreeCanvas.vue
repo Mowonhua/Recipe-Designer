@@ -300,6 +300,25 @@ function layoutTree(root: BomTreeNode): {
     for (const input of node.inputs) {
       if (input.child) {
         children.push(build(input.child, depth + 1));
+      } else {
+        // Raw material / catalyst / byproduct leaf — synthetic node from edge
+        const leaf: BomTreeNode = {
+          nodeId: input.sourceNodeId,
+          nodeName: input.sourceNodeName,
+          nodeColor: input.sourceNodeColor,
+          slotId: '',
+          slotName: '—',
+          depth: depth + 1,
+          targetQuantity: input.quantity,
+          inputs: [],
+          byproducts: [],
+          isRawMaterial: !input.isCatalyst && !input.isProliferator,
+          isByproduct: input.isByproduct || false,
+          isSurplus: false,
+          isCatalystBlocked: false,
+          isCycleDetected: false,
+        };
+        children.push(build(leaf, depth + 1));
       }
     }
 
