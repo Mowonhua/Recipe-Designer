@@ -246,7 +246,8 @@
     "tableQuantity": "Quantity",
     "tableRateMin": "Rate/min",
     "tableMachines": "Machines",
-    "noRecipe": "(no recipe)"
+    "noRecipe": "(no recipe)",
+    "dragToPan": "Drag to pan"
   },
   "validation": {
     "edgeTargetMissing": "Edge \"{edgeId}\" targets node \"{targetId}\" which does not exist.",

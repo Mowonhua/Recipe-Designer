@@ -100,14 +100,11 @@
       <!-- BOM Tree -->
       <div v-if="result" class="tree-block">
         <div class="section-label">{{ $t('bom.productionTree') }}</div>
-        <div class="tree-root">
-          <BomTreeNodeView
-            :node="result.tree"
-            :mode="result.request.mode"
-            :depth="0"
-            @highlight="(id: string | null) => bomStore.setHighlightedNodeId(id)"
-          />
-        </div>
+        <BomTreeCanvas
+          :tree="result.tree"
+          :mode="result.request.mode"
+          @highlight="(id: string | null) => bomStore.setHighlightedNodeId(id)"
+        />
       </div>
 
       <!-- Summary Table -->
@@ -140,7 +137,7 @@ import { useI18n } from 'vue-i18n';
 import { useBomStore } from '../store/bom-store';
 import { useStore } from '../store';
 import type { CalculationMode, BalancingStrategy, ByproductStrategy, BomTreeNode, BomWarning } from '../bom';
-import BomTreeNodeView from './BomTreeNodeView.vue';
+import BomTreeCanvas from './BomTreeCanvas.vue';
 import BomSummaryTable from './BomSummaryTable.vue';
 
 const { t } = useI18n();
@@ -332,13 +329,22 @@ watch(() => bomStore.pendingRequest, (req) => {
 
 .warn-icon { margin-right: 6px; }
 
-.tree-block, .summary-block {
-  margin-bottom: var(--spacing-xl);
+:deep(.n-drawer-body-content) {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
-.tree-root {
-  font-family: var(--font-mono);
-  font-size: 12px;
+.tree-block {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  margin-bottom: var(--spacing-lg);
+}
+
+.summary-block {
+  margin-bottom: var(--spacing-xl);
 }
 
 .empty-state {
