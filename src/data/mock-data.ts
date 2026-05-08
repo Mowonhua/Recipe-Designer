@@ -370,6 +370,66 @@ mockEdges.push(
 );
 
 // ============================================================
+// Deep Chain (>10 layers) — Extreme Case Test
+// ============================================================
+
+const deepRawA = rawMaterial('Deep Mineral A', 1000, 520, '#e07050', ['ore', 'metal', 'deep']);
+
+const deepSlot1 = mkslot({ name: 'Crushing A', time: 1.0, tags: ['smelting'], machine_id: furnace.id });
+const deep1 = product('Crushed Mineral A', 1000, 440, '#d08060', [deepSlot1], ['intermediate', 'deep']);
+
+const deepSlot2 = mkslot({ name: 'Washing A', time: 1.5, tags: ['crafting'], machine_id: assembler.id });
+const deep2 = product('Washed Mineral A', 1000, 360, '#c89070', [deepSlot2], ['intermediate', 'deep']);
+
+const deepSlot3 = mkslot({ name: 'Purifying A', time: 2.0, tags: ['chemistry'], machine_id: chemPlant.id });
+const deep3 = product('Purified Mineral A', 1000, 280, '#b0a080', [deepSlot3], ['intermediate', 'deep']);
+
+const deepSlot4 = mkslot({ name: 'Pulverizing A', time: 2.5, tags: ['crafting'], machine_id: assembler.id });
+const deep4 = product('Mineral Powder A', 1000, 200, '#a0b090', [deepSlot4], ['powder', 'deep']);
+
+const deepSlot5 = mkslot({ name: 'Alloying A', time: 3.0, tags: ['smelting'], machine_id: furnace.id });
+const deep5 = product('Simple Alloy A', 1000, 120, '#90c0a0', [deepSlot5], ['alloy', 'deep']);
+
+const deepSlot6 = mkslot({ name: 'Plate Forming A', time: 3.5, tags: ['crafting'], machine_id: assembler.id });
+const deep6 = product('Alloy Plate A', 1000, 40, '#80d0b0', [deepSlot6], ['plate', 'deep']);
+
+const deepSlot7 = mkslot({ name: 'Precision Machining A', time: 4.0, tags: ['precision'], machine_id: advAssembler.id });
+const deep7 = product('Precision Part A', 1000, -40, '#70e0c0', [deepSlot7], ['part', 'deep']);
+
+const deepSlot8 = mkslot({ name: 'Sub-Assembly A', time: 4.5, tags: ['crafting'], machine_id: assembler.id });
+const deep8 = product('Sub-Module A', 1000, -120, '#60f0d0', [deepSlot8], ['module', 'deep']);
+
+const deepSlot9 = mkslot({ name: 'Module Integration A', time: 5.0, tags: ['precision'], machine_id: advAssembler.id });
+const deep9 = product('Core Module A', 1000, -200, '#50e0e0', [deepSlot9], ['module', 'deep']);
+
+const deepSlot10 = mkslot({ name: 'System Assembly A', time: 5.5, tags: ['crafting'], machine_id: assembler.id });
+const deep10 = product('Integrated System A', 1000, -280, '#40d0f0', [deepSlot10], ['system', 'deep']);
+
+const deepSlot11 = mkslot({ name: 'Final Integration A', time: 6.0, tags: ['precision'], machine_id: advAssembler.id });
+const deep11 = product('Final Product A', 1000, -360, '#30c0ff', [deepSlot11], ['final', 'deep']);
+
+const deepEdges: FlowEdge[] = [
+  edge(deepRawA.id, deep1.id, deepSlot1.id, 1, 'input'),
+  edge(deep1.id, deep2.id, deepSlot2.id, 1, 'input'),
+  edge(deep2.id, deep3.id, deepSlot3.id, 1, 'input'),
+  edge(deep3.id, deep4.id, deepSlot4.id, 1, 'input'),
+  edge(deep4.id, deep5.id, deepSlot5.id, 1, 'input'),
+  edge(deep5.id, deep6.id, deepSlot6.id, 1, 'input'),
+  edge(deep6.id, deep7.id, deepSlot7.id, 1, 'input'),
+  edge(deep7.id, deep8.id, deepSlot8.id, 1, 'input'),
+  edge(deep8.id, deep9.id, deepSlot9.id, 1, 'input'),
+  edge(deep9.id, deep10.id, deepSlot10.id, 1, 'input'),
+  edge(deep10.id, deep11.id, deepSlot11.id, 1, 'input'),
+];
+
+mockEdges.push(...deepEdges);
+
+const deepNodes: ItemNode[] = [
+  deepRawA,
+  deep1, deep2, deep3, deep4, deep5, deep6, deep7, deep8, deep9, deep10, deep11,
+];
+
+// ============================================================
 // Assemble
 // ============================================================
 
@@ -384,6 +444,7 @@ const mockNodes: ItemNode[] = [
   basicCircuit, concrete, advancedCircuit,
   // Byproducts
   slag, heavyOil,
+  ...deepNodes,
 ];
 
 // Build proliferators referencing raw material IDs
