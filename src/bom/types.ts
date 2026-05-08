@@ -52,6 +52,7 @@ export interface BomTreeEdge {
   sourceNodeName: string;
   sourceNodeColor: string;
   quantity: number;
+  recipeQuantity: number;
   child: BomTreeNode | null;
   isByproduct?: boolean;
   isCatalyst?: boolean;

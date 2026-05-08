@@ -105,6 +105,7 @@ function computeOneTime(
       sourceNodeName: sourceNode?.name || edge.source,
       sourceNodeColor: sourceNode?.color || '#64748b',
       quantity: sourceQty,
+      recipeQuantity: edge.quantity,
       child,
     };
   });
@@ -122,6 +123,7 @@ function computeOneTime(
       sourceNodeName: catalystNode?.name || catalystEdge.source,
       sourceNodeColor: catalystNode?.color || '#64748b',
       quantity: 1,
+      recipeQuantity: 1,
       child: null,
       isCatalyst: true,
     };
@@ -154,6 +156,7 @@ function computeOneTime(
             sourceNodeName: bp.itemName,
             sourceNodeColor: bp.itemColor,
             quantity: bp.quantity,
+            recipeQuantity: bp.quantity,
             child: { ...bpChild, isByproduct: true },
             isByproduct: true,
           });
@@ -164,6 +167,7 @@ function computeOneTime(
             sourceNodeName: bp.itemName,
             sourceNodeColor: bp.itemColor,
             quantity: bp.quantity,
+            recipeQuantity: bp.quantity,
             child: null,
             isByproduct: true,
           });
@@ -279,6 +283,7 @@ function computeContinuous(
       sourceNodeName: sourceNode?.name || edge.source,
       sourceNodeColor: sourceNode?.color || '#64748b',
       quantity: consumptionRatePerMin, // items/min
+      recipeQuantity: edge.quantity,
       child,
     };
   });
@@ -296,6 +301,7 @@ function computeContinuous(
       sourceNodeName: catalystNodeC?.name || catalystEdgeC.source,
       sourceNodeColor: catalystNodeC?.color || '#64748b',
       quantity: machineCount,
+      recipeQuantity: 1,
       child: null,
       isCatalyst: true,
     };
@@ -568,6 +574,7 @@ function makeProliferatorEdge(
     sourceNodeName: item?.name || proliferator.item_id,
     sourceNodeColor: item?.color || '#64748b',
     quantity,
+    recipeQuantity: 0,
     child: null,
     isProliferator: true,
   };

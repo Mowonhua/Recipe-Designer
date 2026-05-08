@@ -30,7 +30,7 @@
             <span class="n-qty" v-if="ln.node.executionCount !== undefined">×{{ ln.node.executionCount }}</span>
             <span class="n-mul prolif" v-if="ln.node.proliferatorMultiplier">×{{ ln.node.proliferatorMultiplier }}</span>
             <span class="n-mul global" v-if="ln.node.globalYieldMultiplier">×{{ fmtNum(ln.node.globalYieldMultiplier) }}</span>
-            <span class="n-total" v-if="ln.node.executionCount !== undefined && !ln.node.isRawMaterial">
+            <span class="n-total" v-if="ln.node.executionCount !== undefined || ln.node.isRawMaterial">
               = {{ ln.node.targetQuantity }}
             </span>
           </template>
@@ -76,15 +76,14 @@
             }"
           ></div>
           <!-- Edge labels with quantities -->
-          <template v-for="edge in ln.node.inputs" :key="'lbl-' + edge.edgeId">
+          <template v-for="(edge, idx) in ln.node.inputs" :key="'lbl-' + edge.edgeId">
             <div
-              v-if="edge.child"
               class="edge-label"
               :style="{
                 left: (ln.x + HALF_INDENT + 4) + 'px',
-                top: getChildY(edge.child.nodeId) + 'px',
+                top: (ln.children[idx]?.y ?? 0) + 'px',
               }"
-            >×{{ fmtNum(edge.quantity) }}</div>
+            >×{{ fmtNum(edge.recipeQuantity) }}</div>
           </template>
         </template>
       </template>
@@ -199,9 +198,6 @@ function lastChildMidY(ln: LayoutNode): number {
   return last.y + NODE_H / 2;
 }
 
-function getChildY(childNodeId: string): number {
-  return layoutData.value.childYMap.get(childNodeId) ?? 0;
-}
 
 /* ============================================
    Measurement
@@ -237,7 +233,7 @@ function measureNodeWidth(node: BomTreeNode): number {
     if (node.globalYieldMultiplier) {
       parts.push(`<span class="n-mul global">×${fmtNum(node.globalYieldMultiplier)}</span>`);
     }
-    if (node.executionCount !== undefined && !node.isRawMaterial) {
+    if (node.executionCount !== undefined || node.isRawMaterial) {
       parts.push(`<span class="n-total">= ${node.targetQuantity}</span>`);
     }
   }
@@ -288,7 +284,6 @@ function layoutTree(root: BomTreeNode): {
   nodes: LayoutNode[];
   worldW: number;
   worldH: number;
-  childYMap: Map<string, number>;
 } {
   const flat: LayoutNode[] = [];
 
@@ -368,7 +363,6 @@ function layoutTree(root: BomTreeNode): {
     nodes: flat,
     worldW: Math.max(maxX + PAD, 400),
     worldH: totalH + PAD,
-    childYMap: new Map(flat.map(n => [n.node.nodeId, n.y])),
   };
 }
 
