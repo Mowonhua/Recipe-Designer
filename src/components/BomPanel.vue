@@ -117,6 +117,7 @@
         v-model:show="treeExpanded"
         preset="card"
         :title="$t('bom.productionTree')"
+        class="bom-tree-modal-card"
         style="width: min(95vw, 1400px); max-height: 90vh;"
         :mask-closable="true"
         size="huge"
@@ -361,18 +362,6 @@ watch(() => bomStore.pendingRequest, (req) => {
   overflow: hidden;
 }
 
-:deep(.n-card__content) {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  overflow: hidden;
-}
-
-:deep(.n-card) {
-  display: flex;
-  flex-direction: column;
-}
-
 .tree-block {
   display: flex;
   flex-direction: column;
@@ -476,5 +465,20 @@ watch(() => bomStore.pendingRequest, (req) => {
   font-size: 11px;
   font-weight: 900;
   text-transform: uppercase;
+}
+</style>
+
+<style>
+/* BomPanel modal — must be unscoped because NModal teleports to body */
+.bom-tree-modal-card.n-card {
+  display: flex;
+  flex-direction: column;
+}
+
+.bom-tree-modal-card .n-card__content {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden;
 }
 </style>
