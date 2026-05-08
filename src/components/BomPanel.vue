@@ -361,6 +361,18 @@ watch(() => bomStore.pendingRequest, (req) => {
   overflow: hidden;
 }
 
+:deep(.n-card__content) {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden;
+}
+
+:deep(.n-card) {
+  display: flex;
+  flex-direction: column;
+}
+
 .tree-block {
   display: flex;
   flex-direction: column;
@@ -396,6 +408,8 @@ watch(() => bomStore.pendingRequest, (req) => {
 }
 
 .expanded-tree-wrapper {
+  display: flex;
+  flex-direction: column;
   height: 75vh;
   min-height: 400px;
 }
