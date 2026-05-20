@@ -157,6 +157,15 @@
       :template="tplMappingTemplate"
       :drop-position="tplMappingPosition"
     />
+    <PromptDialog
+      :visible="tplNamePromptVisible"
+      :title="$t('template.saveAsTemplateTitle')"
+      :placeholder="$t('template.templateNamePlaceholder')"
+      :confirm-text="$t('dialog.ok')"
+      :cancel-text="$t('dialog.cancel')"
+      @confirm="onTemplateNameConfirm"
+      @cancel="tplNamePromptVisible = false"
+    />
   </div>
 </template>
 
@@ -190,6 +199,7 @@ import BomPanel from './BomPanel.vue';
 import ContextMenu from './ContextMenu.vue';
 import GameSettingsPanel from './GameSettingsPanel.vue';
 import TemplateMappingDialog from './TemplateMappingDialog.vue';
+import PromptDialog from './PromptDialog.vue';
 import type { Template } from '../store';
 import type { ContextMenuItem } from './ContextMenu.vue';
 import { useBomStore } from '../store/bom-store';
@@ -935,6 +945,8 @@ function toggleFileMenu() {
 const tplMappingVisible = ref(false);
 const tplMappingTemplate = ref<Template | null>(null);
 const tplMappingPosition = ref({ x: 0, y: 0 });
+const tplNamePromptVisible = ref(false);
+const tplSelectedIds: string[] = [];
 const currentLocale = ref(localStorage.getItem('app-locale') || 'en-US');
 const localeOptions = supportedLocales.map(l => ({ label: l.label, value: l.value }));
 
@@ -1475,15 +1487,20 @@ function onExternalChange(e: Event) {
 
 // --- Template creation from selection ---
 function onCreateTemplateFromSelection() {
-  // Get selected node IDs from VueFlow nodes
   const selectedIds = nodes.value.filter((n: any) => n.selected && n.type !== 'group').map((n: any) => n.id);
   if (selectedIds.length < 2) {
     window.dispatchEvent(new CustomEvent('template-create-result', { detail: { success: false, message: 'Select at least 2 nodes on the canvas' } }));
     return;
   }
-  const name = window.prompt('Template name:');
-  if (!name || !name.trim()) return;
-  store.createTemplateFromSelection(selectedIds, name.trim());
+  tplSelectedIds.length = 0;
+  tplSelectedIds.push(...selectedIds);
+  tplNamePromptVisible.value = true;
+}
+
+function onTemplateNameConfirm(name: string) {
+  store.createTemplateFromSelection(tplSelectedIds, name);
+  tplNamePromptVisible.value = false;
+  tplSelectedIds.length = 0;
 }
 </script>
 

@@ -1,14 +1,24 @@
 <template>
   <aside class="dictionary-panel">
-    <!-- Diagonal-split header: Dictionary (top-left) / Templates (bottom-right) -->
-    <header class="panel-header-split" :class="{ 'tpl-active': panelMode === 'templates' }">
-      <button class="split-btn dict-btn" @click="panelMode = 'dictionary'">
-        <span class="split-label">{{ $t('dict.dictionary') }}</span>
+    <!-- Exaggerated Skew Header -->
+    <header class="panel-header-skew">
+      <button 
+        class="skew-btn dict-btn" 
+        :class="{ active: panelMode === 'dictionary' }" 
+        @click="panelMode = 'dictionary'"
+      >
+        <span class="skew-label">{{ $t('dict.dictionary') }}</span>
       </button>
-      <div class="split-slash"></div>
-      <button class="split-btn tpl-btn" @click="panelMode = 'templates'">
-        <span class="split-label">{{ $t('dict.templates') }}</span>
+      <button 
+        class="skew-btn tpl-btn" 
+        :class="{ active: panelMode === 'templates' }" 
+        @click="panelMode = 'templates'"
+      >
+        <span class="skew-label">{{ $t('dict.templates') }}</span>
       </button>
+      <svg class="skew-divider" preserveAspectRatio="none" viewBox="0 0 100 100">
+        <line x1="100" y1="0" x2="0" y2="100" />
+      </svg>
     </header>
 
     <!-- Dictionary mode -->
@@ -150,10 +160,6 @@
           </div>
         </template>
 
-        <div v-if="filteredTemplates.length === 0" class="empty-hint">
-          {{ $t('dict.noTemplates') }}
-        </div>
-
         <!-- Save current selection as template -->
         <div class="list-item add-item" @click="saveAsTemplate">
           <span class="add-icon">+</span>
@@ -200,6 +206,15 @@
       @confirm="confirmDialog.onConfirm(); closeConfirmDialog()"
       @cancel="closeConfirmDialog"
     />
+
+    <!-- Rename Template Prompt -->
+    <PromptDialog
+      :visible="renameTplVisible"
+      :title="$t('dict.renameTemplate')"
+      :default-value="renameTplDefault"
+      @confirm="onRenameConfirm"
+      @cancel="renameTplVisible = false"
+    />
   </aside>
 </template>
 
@@ -209,6 +224,7 @@ import { useI18n } from 'vue-i18n';
 import { useStore, type ItemNode, type Machine, type Template } from '../store';
 import ConfirmDialog from './ConfirmDialog.vue';
 import MachineEditorDrawer from './MachineEditorDrawer.vue';
+import PromptDialog from './PromptDialog.vue';
 import { loadTemplates, saveTemplates } from '../services/file-service';
 
 const { t } = useI18n();
@@ -428,6 +444,10 @@ function closeConfirmDialog() {
   confirmDialog.value.show = false;
 }
 
+const renameTplVisible = ref(false);
+const renameTplId = ref('');
+const renameTplDefault = ref('');
+
 function openItemContextMenu(event: MouseEvent, node: ItemNode) {
   const menuWidth = 120;
   const menuHeight = 72;
@@ -476,11 +496,9 @@ function contextMenuEdit() {
   } else if (type === 'template') {
     const tpl = store.getTemplates().find(t => t.id === targetId);
     if (tpl) {
-      const newName = window.prompt(t('dict.renameTemplate'), tpl.name);
-      if (newName && newName.trim()) {
-        store.updateTemplate(targetId, { name: newName.trim() });
-        saveTemplates(store.getTemplates());
-      }
+      renameTplId.value = targetId;
+      renameTplDefault.value = tpl.name;
+      renameTplVisible.value = true;
     }
   } else {
     nextTick(() => {
@@ -488,6 +506,12 @@ function contextMenuEdit() {
       if (machine) openMachineDrawer(machine);
     });
   }
+}
+
+function onRenameConfirm(newName: string) {
+  store.updateTemplate(renameTplId.value, { name: newName.trim() });
+  saveTemplates(store.getTemplates());
+  renameTplVisible.value = false;
 }
 
 function contextMenuDelete() {
@@ -540,72 +564,88 @@ watch(() => store.getTemplates(), (newTpls) => {
   z-index: 10;
 }
 
-.panel-header-split {
+.panel-header-skew {
   position: relative;
-  height: 80px;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  grid-template-rows: 1fr 1fr;
-  overflow: hidden;
+  height: 140px;
+  background: var(--panel-bg);
   border-bottom: var(--border-width-lg) solid var(--border-default);
+  overflow: hidden;
 }
 
-.split-btn {
+.skew-btn {
   all: unset;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
   cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-  z-index: 1;
-  transition: background var(--transition-fast);
+  transition: background var(--transition-fast), color var(--transition-fast);
+  color: var(--text-primary);
+  box-sizing: border-box;
 }
 
 .dict-btn {
-  grid-column: 1;
-  grid-row: 1;
+  clip-path: polygon(0 0, 100% 0, 0 100%);
+  background: var(--bg-surface);
+  z-index: 1;
 }
 
 .tpl-btn {
-  grid-column: 2;
-  grid-row: 2;
+  clip-path: polygon(100% 0, 100% 100%, 0 100%);
+  background: var(--bg-surface);
+  z-index: 1;
 }
 
-.split-btn:hover {
+.dict-btn:hover:not(.active),
+.tpl-btn:hover:not(.active) {
   background: var(--bg-hover);
 }
 
-.panel-header-split.dict-active .dict-btn,
-.panel-header-split.tpl-active .tpl-btn {
-  background: var(--bg-color);
+.dict-btn.active {
+  background: var(--accent-blue);
+  color: var(--bg-color);
 }
 
-.split-label {
+.tpl-btn.active {
+  background: var(--accent-red);
+  color: var(--bg-color);
+}
+
+.skew-label {
+  position: absolute;
   font-family: var(--font-ui);
-  font-size: 14px;
   font-weight: 900;
+  font-size: 24px;
   text-transform: uppercase;
-  letter-spacing: 1px;
-  color: var(--text-primary);
-}
-
-.split-slash {
-  position: absolute;
-  inset: 0;
+  letter-spacing: 2px;
   pointer-events: none;
-  z-index: 0;
 }
 
-.split-slash::after {
-  content: '';
+.dict-btn .skew-label {
+  top: 24px;
+  left: 16px;
+}
+
+.tpl-btn .skew-label {
+  bottom: 24px;
+  right: 16px;
+}
+
+.skew-divider {
   position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 200%;
-  height: 6px;
-  background: var(--text-primary);
-  transform: translate(-50%, -50%) rotate(-35deg);
-  opacity: 0.85;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.skew-divider line {
+  stroke: var(--border-default);
+  stroke-width: var(--border-width-lg);
+  vector-effect: non-scaling-stroke;
 }
 
 .search-box {
@@ -811,14 +851,6 @@ watch(() => store.getTemplates(), (newTpls) => {
   font-family: var(--font-mono);
   color: var(--text-muted);
   margin-left: auto;
-}
-
-.empty-hint {
-  padding: var(--spacing-xl);
-  text-align: center;
-  color: var(--text-muted);
-  font-size: 13px;
-  font-style: italic;
 }
 
 .add-item {

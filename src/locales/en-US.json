@@ -42,7 +42,6 @@
     "dictionary": "Dictionary",
     "templates": "Templates",
     "filterTemplates": "Filter templates...",
-    "noTemplates": "No templates saved",
     "saveAsTemplate": "Save Selection as Template",
     "renameTemplate": "Rename Template",
     "deleteTemplateConfirm": "Delete template \"{name}\"?",
@@ -281,6 +280,15 @@
     "ok": "OK",
     "cancel": "Cancel",
     "confirm": "Confirm"
+  },
+  "template": {
+    "instantiateTemplate": "Instantiate Template",
+    "mappingDescription": "Map each template placeholder to a canvas item or create a new one.",
+    "createNewItem": "Create New Item",
+    "instantiate": "Instantiate",
+    "saveAsTemplateTitle": "Save as Template",
+    "templateNamePlaceholder": "Template name",
+    "newItemNamePlaceholder": "New item name"
   },
   "fileService": {
     "newProject": "New project created",

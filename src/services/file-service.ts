@@ -81,6 +81,7 @@ export async function newProject(): Promise<void> {
     machines: [],
     global_effects: [],
     proliferators: [],
+    templates: [],
   });
   store.meta.created = new Date().toISOString();
   store.meta.updated = new Date().toISOString();
@@ -123,6 +124,7 @@ export async function openProject(): Promise<void> {
       machines: state.machines || [],
       global_effects: state.global_effects || [],
       proliferators: state.proliferators || [],
+      templates: state.templates || [],
     });
     if (state.meta) {
       store.meta = { ...state.meta };
@@ -199,6 +201,7 @@ async function writeProjectFile(path: string) {
     nodes: store.nodes,
     edges: store.edges,
     groups: store.groups,
+    templates: store.templates,
   };
 
   await writeTextFile(path, JSON.stringify(state, null, 2));
@@ -292,6 +295,7 @@ export async function reloadCurrentFile() {
       machines: state.machines || [],
       global_effects: state.global_effects || [],
       proliferators: state.proliferators || [],
+      templates: state.templates || [],
     });
     store.meta = { ...state.meta };
     lastSavedChangeCounter = store.changeCounter;

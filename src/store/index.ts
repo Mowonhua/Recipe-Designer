@@ -105,7 +105,6 @@ export interface TemplateSlot {
 
 export interface TemplateNode {
   ref: string;
-  display_name: string;
   color?: string;
   is_raw_material: boolean | null;
   slots: TemplateSlot[];
@@ -149,6 +148,7 @@ export interface State {
   nodes: ItemNode[];
   edges: FlowEdge[];
   groups: Group[];
+  templates: Template[];
 }
 
 // --- Command Pattern for Undo/Redo ---
@@ -361,7 +361,8 @@ export const useStore = defineStore('recipe-designer', () => {
       machines: machines.value,
       nodes: nodes.value,
       edges: edges.value,
-      groups: groups.value
+      groups: groups.value,
+      templates: templates.value,
     });
     
     meta.value.updated = new Date().toISOString();
@@ -386,7 +387,8 @@ export const useStore = defineStore('recipe-designer', () => {
         machines: machines.value,
         nodes: nodes.value,
         edges: edges.value,
-        groups: groups.value
+        groups: groups.value,
+        templates: templates.value,
       });
       historyIndex.value--;
       meta.value.updated = new Date().toISOString();
@@ -407,7 +409,8 @@ export const useStore = defineStore('recipe-designer', () => {
         machines: machines.value,
         nodes: nodes.value,
         edges: edges.value,
-        groups: groups.value
+        groups: groups.value,
+        templates: templates.value,
       });
       meta.value.updated = new Date().toISOString();
       changeCounter.value++;
@@ -831,7 +834,6 @@ export const useStore = defineStore('recipe-designer', () => {
 
     const tplNodes: TemplateNode[] = selectedNodes.map((n, i) => ({
       ref: `item_${i}`,
-      display_name: n.name,
       color: n.color,
       is_raw_material: n.is_raw_material,
       slots: n.slots.map(s => ({
@@ -894,15 +896,17 @@ export const useStore = defineStore('recipe-designer', () => {
       nodes: nodes.value,
       edges: edges.value,
       groups: groups.value,
+      templates: templates.value,
     };
   }
 
-  function seedData(data: { nodes: ItemNode[]; edges: FlowEdge[]; machines: Machine[]; global_effects?: GlobalEffect[]; proliferators?: Proliferator[] }) {
+  function seedData(data: { nodes: ItemNode[]; edges: FlowEdge[]; machines: Machine[]; global_effects?: GlobalEffect[]; proliferators?: Proliferator[]; templates?: Template[] }) {
     nodes.value = data.nodes;
     edges.value = data.edges;
     machines.value = data.machines;
     global_effects.value = data.global_effects || global_effects.value;
     proliferators.value = data.proliferators || proliferators.value;
+    templates.value = data.templates || [];
     rebuildTagPool();
     // Clear history when seeding
     history.value = [];

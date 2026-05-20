@@ -42,7 +42,6 @@
     "dictionary": "字典",
     "templates": "模板",
     "filterTemplates": "筛选模板...",
-    "noTemplates": "暂无模板",
     "saveAsTemplate": "保存选中为模板",
     "renameTemplate": "重命名模板",
     "deleteTemplateConfirm": "删除模板 \"{name}\"？",
@@ -281,6 +280,15 @@
     "ok": "确定",
     "cancel": "取消",
     "confirm": "确认"
+  },
+  "template": {
+    "instantiateTemplate": "实例化模板",
+    "mappingDescription": "将每个模板占位符映射到画布物品，或创建新物品。",
+    "createNewItem": "新建物品",
+    "instantiate": "实例化",
+    "saveAsTemplateTitle": "保存为模板",
+    "templateNamePlaceholder": "模板名称",
+    "newItemNamePlaceholder": "新物品名称"
   },
   "fileService": {
     "newProject": "已创建新项目",
