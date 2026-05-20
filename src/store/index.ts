@@ -92,6 +92,41 @@ export interface Group {
   };
 }
 
+export interface TemplateSlot {
+  name: string;
+  time: number;
+  machine_ref: string;
+  tags: string[];
+  primary_output_quantity: number;
+  secondary_outputs: { item_ref: string; quantity: number }[];
+  catalyst_mode: 'none' | 'optional' | 'required';
+  catalyst?: { item_ref: string; quantity: number; speed_multiplier?: number };
+}
+
+export interface TemplateNode {
+  ref: string;
+  display_name: string;
+  color?: string;
+  is_raw_material: boolean | null;
+  slots: TemplateSlot[];
+}
+
+export interface TemplateEdge {
+  source_ref: string;
+  target_ref: string;
+  target_slot_index: number;
+  quantity: number;
+  edge_type: 'input' | 'byproduct' | 'catalyst';
+}
+
+export interface Template {
+  id: string;
+  name: string;
+  description?: string;
+  nodes: TemplateNode[];
+  edges: TemplateEdge[];
+}
+
 export interface Viewport {
   zoom: number;
   center: { x: number; y: number };
@@ -290,6 +325,7 @@ export const useStore = defineStore('recipe-designer', () => {
   const nodes = ref<ItemNode[]>([]);
   const edges = ref<FlowEdge[]>([]);
   const groups = ref<Group[]>([]);
+  const templates = ref<Template[]>([]);
 
   const validationErrors = ref<ValidationError[]>([]);
 
@@ -753,6 +789,97 @@ export const useStore = defineStore('recipe-designer', () => {
     }
   }
 
+  // --- Template CRUD ---
+
+  function addTemplate(template: Template) {
+    templates.value.push(template);
+    changeCounter.value++;
+  }
+
+  function updateTemplate(id: string, changes: Partial<Template>) {
+    const tpl = templates.value.find(t => t.id === id);
+    if (tpl) {
+      Object.assign(tpl, changes);
+      changeCounter.value++;
+    }
+  }
+
+  function deleteTemplate(id: string) {
+    const idx = templates.value.findIndex(t => t.id === id);
+    if (idx >= 0) {
+      templates.value.splice(idx, 1);
+      changeCounter.value++;
+    }
+  }
+
+  function getTemplates(): Template[] {
+    return templates.value;
+  }
+
+  /**
+   * Create a template from a set of selected node IDs on the canvas.
+   * Nodes not on canvas are skipped. Edges between selected nodes are included.
+   */
+  function createTemplateFromSelection(nodeIds: string[], name: string): Template | null {
+    const idSet = new Set(nodeIds);
+    const selectedNodes = nodes.value.filter(n => idSet.has(n.id) && isNodeOnCanvas(n.id));
+    if (selectedNodes.length === 0) return null;
+
+    const edgeList = edges.value.filter(e => idSet.has(e.source) && idSet.has(e.target));
+
+    const tplNodes: TemplateNode[] = selectedNodes.map((n, i) => ({
+      ref: `item_${i}`,
+      display_name: n.name,
+      color: n.color,
+      is_raw_material: n.is_raw_material,
+      slots: n.slots.map(s => ({
+        name: s.name,
+        time: s.time,
+        machine_ref: '',
+        tags: [...s.tags],
+        primary_output_quantity: s.primary_output_quantity,
+        secondary_outputs: s.secondary_outputs.map(so => {
+          const soNode = nodes.value.find(nn => nn.id === so.item_id);
+          return { item_ref: soNode?.name || so.item_id, quantity: so.quantity };
+        }),
+        catalyst_mode: s.catalyst_mode,
+        catalyst: s.catalyst ? {
+          item_ref: nodes.value.find(nn => nn.id === s.catalyst!.item_id)?.name || s.catalyst.item_id,
+          quantity: s.catalyst.quantity,
+          speed_multiplier: s.catalyst.speed_multiplier,
+        } : undefined,
+      })),
+    }));
+
+    const refMap = new Map<string, string>();
+    selectedNodes.forEach((n, i) => refMap.set(n.id, `item_${i}`));
+
+    const tplEdges: TemplateEdge[] = edgeList.map(e => {
+      const targetNode = selectedNodes.find(n => n.id === e.target);
+      const slotIdx = targetNode?.slots.findIndex(s => s.id === e.target_slot_id) ?? 0;
+      return {
+        source_ref: refMap.get(e.source) || '',
+        target_ref: refMap.get(e.target) || '',
+        target_slot_index: slotIdx >= 0 ? slotIdx : 0,
+        quantity: e.quantity,
+        edge_type: e.edge_type,
+      };
+    });
+
+    const template: Template = {
+      id: uuidv4(),
+      name,
+      nodes: tplNodes,
+      edges: tplEdges,
+    };
+    addTemplate(template);
+    return template;
+  }
+
+  function seedTemplates(data: Template[]) {
+    templates.value = data;
+  }
+
   // Helper to construct State object for pure functions
   function getState(): State {
     return {
@@ -824,6 +951,7 @@ export const useStore = defineStore('recipe-designer', () => {
     nodes,
     edges,
     groups,
+    templates,
     validationErrors,
     commit,
     undo,
@@ -870,5 +998,11 @@ export const useStore = defineStore('recipe-designer', () => {
     clearValidation,
     setValidationErrors,
     seedData,
+    addTemplate,
+    updateTemplate,
+    deleteTemplate,
+    getTemplates,
+    createTemplateFromSelection,
+    seedTemplates,
   };
 });

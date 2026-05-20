@@ -3,6 +3,30 @@
     <DictionaryPanel />
     <div ref="canvasWrapRef" class="canvas-wrap">
       <div class="canvas-toolbar">
+        <div class="file-menu-wrap">
+          <button type="button" class="toolbar-btn icon-toolbar-btn" @click="toggleFileMenu" :title="$t('editor.file')">
+            <FilePlus :size="14" />
+          </button>
+          <div v-if="fileMenuVisible" class="ol-menu file-dropdown">
+            <button class="ol-menu-item" @click="newProject(); fileMenuVisible = false">
+              {{ $t('editor.newFile') }}
+              <span class="menu-shortcut">Ctrl+N</span>
+            </button>
+            <button class="ol-menu-item" @click="openProject(); fileMenuVisible = false">
+              {{ $t('editor.openFile') }}
+              <span class="menu-shortcut">Ctrl+O</span>
+            </button>
+            <button class="ol-menu-item" @click="saveProject(); fileMenuVisible = false">
+              {{ $t('editor.saveFile') }}
+              <span class="menu-shortcut">Ctrl+S</span>
+            </button>
+            <button class="ol-menu-item" @click="saveProjectAs(); fileMenuVisible = false">
+              {{ $t('editor.saveAsFile') }}
+              <span class="menu-shortcut">Ctrl+Shift+S</span>
+            </button>
+          </div>
+        </div>
+        <div v-if="fileMenuVisible" class="ol-overlay" @click="fileMenuVisible = false"></div>
         <button type="button" class="toolbar-btn icon-toolbar-btn" @click="showGameSettings = true" :title="$t('editor.gameSettingsTitle')">
           <Gamepad2 :size="14" />
         </button>
@@ -128,6 +152,11 @@
         </div>
       </div>
     </n-modal>
+    <TemplateMappingDialog
+      v-model:visible="tplMappingVisible"
+      :template="tplMappingTemplate"
+      :drop-position="tplMappingPosition"
+    />
   </div>
 </template>
 
@@ -160,15 +189,19 @@ import SearchOverlay from './SearchOverlay.vue';
 import BomPanel from './BomPanel.vue';
 import ContextMenu from './ContextMenu.vue';
 import GameSettingsPanel from './GameSettingsPanel.vue';
+import TemplateMappingDialog from './TemplateMappingDialog.vue';
+import type { Template } from '../store';
 import type { ContextMenuItem } from './ContextMenu.vue';
 import { useBomStore } from '../store/bom-store';
-import { Gamepad2, Settings } from 'lucide-vue-next';
-import { NModal, NSelect, NInputNumber } from 'naive-ui';
+import { Gamepad2, Settings, FilePlus } from 'lucide-vue-next';
+import { NModal, NSelect, NInputNumber, useMessage } from 'naive-ui';
 import { supportedLocales, setLocale } from '../locales';
+import { initFileService, newProject, openProject, saveProject, saveProjectAs, EXTERNAL_CHANGE_EVENT, FILE_EVENT, reloadCurrentFile } from '../services/file-service';
 
 const { t } = useI18n();
 const store = useStore();
 const bomStore = useBomStore();
+const message = useMessage();
 const { setCenter, viewport, fitView } = useVueFlow();
 
 const nodeTypes: any = { item: markRaw(ItemNode), group: markRaw(GroupNode) };
@@ -893,6 +926,15 @@ const showSearch = ref(false);
 // --- Settings ---
 const showSettings = ref(false);
 const showGameSettings = ref(false);
+const fileMenuVisible = ref(false);
+
+function toggleFileMenu() {
+  fileMenuVisible.value = !fileMenuVisible.value;
+}
+
+const tplMappingVisible = ref(false);
+const tplMappingTemplate = ref<Template | null>(null);
+const tplMappingPosition = ref({ x: 0, y: 0 });
 const currentLocale = ref(localStorage.getItem('app-locale') || 'en-US');
 const localeOptions = supportedLocales.map(l => ({ label: l.label, value: l.value }));
 
@@ -1252,6 +1294,20 @@ function onDropOnCanvas(event: DragEvent) {
       if (targetNode) {
         store.setNodeMachine(targetNode.id, machineId);
       }
+    } else if (data.type === 'dictionary-template') {
+      const templateId = data.templateId;
+      const tpl = store.getTemplates().find(t => t.id === templateId);
+      if (tpl) {
+        const vp = viewport.value;
+        const canvasX = event.clientX - rect.left;
+        const canvasY = event.clientY - rect.top;
+        tplMappingTemplate.value = tpl;
+        tplMappingPosition.value = {
+          x: (canvasX - vp.x) / vp.zoom,
+          y: (canvasY - vp.y) / vp.zoom,
+        };
+        tplMappingVisible.value = true;
+      }
     }
   } catch { /* ignore */ }
 }
@@ -1338,33 +1394,96 @@ function onKeydown(e: KeyboardEvent) {
     showSearch.value = false;
   } else if (e.key === 'Escape' && activeShortcut.value) {
     activeShortcut.value = null;
+  } else if (e.key === 'Escape' && fileMenuVisible.value) {
+    fileMenuVisible.value = false;
   } else if (e.key === 'Escape') {
     closeContextMenu();
+  }
+
+  // File operations (standard shortcuts, not rebindable)
+  if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 's') {
+    e.preventDefault();
+    saveProjectAs();
+  } else if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === 's') {
+    e.preventDefault();
+    saveProject();
+  } else if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === 'o') {
+    e.preventDefault();
+    openProject();
+  } else if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === 'n') {
+    e.preventDefault();
+    newProject();
   }
 }
 
 // --- Lifecycle ---
 onMounted(() => {
-  // Seed mock data
-  store.seedData({
-    nodes: mockNodes,
-    edges: mockEdges,
-    machines: mockMachines,
-    global_effects: mockGlobalEffects,
-    proliferators: mockProliferators,
-  });
+  // Init file service (auto-save, etc.) — does nothing in browser mode
+  initFileService();
+
+  // Seed mock data only when not in Tauri (browser dev mode)
+  // In Tauri, the app starts with an empty project; use Ctrl+O to open a file
+  const isTauri = '__TAURI_INTERNALS__' in window || '__TAURI__' in window;
+  if (!isTauri) {
+    store.seedData({
+      nodes: mockNodes,
+      edges: mockEdges,
+      machines: mockMachines,
+      global_effects: mockGlobalEffects,
+      proliferators: mockProliferators,
+    });
+  }
   applyLayout();
   syncFromStore();
 
   // Keyboard listener on window (for shortcuts even when canvas not focused)
   window.addEventListener('keydown', onKeydown as EventListener);
   window.addEventListener('search-fly-to', onSearchFlyTo);
+  window.addEventListener(EXTERNAL_CHANGE_EVENT, onExternalChange);
+  window.addEventListener(FILE_EVENT, onFileEvent);
+  window.addEventListener('request-create-template', onCreateTemplateFromSelection);
 });
 
 onUnmounted(() => {
   window.removeEventListener('keydown', onKeydown as EventListener);
   window.removeEventListener('search-fly-to', onSearchFlyTo);
+  window.removeEventListener(EXTERNAL_CHANGE_EVENT, onExternalChange);
+  window.removeEventListener(FILE_EVENT, onFileEvent);
+  window.removeEventListener('request-create-template', onCreateTemplateFromSelection);
 });
+
+// --- File event handler (notifications from file-service) ---
+function onFileEvent(e: Event) {
+  const { type, key, params } = (e as CustomEvent).detail as { type: 'success' | 'error'; key: string; params?: Record<string, any> };
+  const msg = t(key, params ?? {});
+  if (type === 'success') {
+    message.success(msg);
+  } else {
+    message.error(msg);
+  }
+}
+
+// --- File external change handler ---
+function onExternalChange(e: Event) {
+  const detail = (e as CustomEvent).detail as { path: string };
+  // Use simple confirm for now; can be replaced with a proper dialog
+  if (window.confirm(t('fileService.externalChange', { path: detail.path }))) {
+    reloadCurrentFile();
+  }
+}
+
+// --- Template creation from selection ---
+function onCreateTemplateFromSelection() {
+  // Get selected node IDs from VueFlow nodes
+  const selectedIds = nodes.value.filter((n: any) => n.selected && n.type !== 'group').map((n: any) => n.id);
+  if (selectedIds.length < 2) {
+    window.dispatchEvent(new CustomEvent('template-create-result', { detail: { success: false, message: 'Select at least 2 nodes on the canvas' } }));
+    return;
+  }
+  const name = window.prompt('Template name:');
+  if (!name || !name.trim()) return;
+  store.createTemplateFromSelection(selectedIds, name.trim());
+}
 </script>
 
 <style scoped>
@@ -1407,6 +1526,26 @@ onUnmounted(() => {
   transform: translate(2px, 2px);
   box-shadow: 2px 2px 0px var(--text-primary);
 }
+
+.file-menu-wrap {
+  position: relative;
+}
+
+.file-dropdown {
+  position: absolute;
+  top: 36px;
+  left: 0;
+  min-width: 180px;
+  z-index: 10000;
+}
+
+.menu-shortcut {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+}
+
 .toolbar-btn.icon-toolbar-btn {
   width: 30px;
   height: 30px;

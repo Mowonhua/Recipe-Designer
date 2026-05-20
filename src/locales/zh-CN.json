@@ -39,6 +39,13 @@
     "deleteMachineConfirm": "删除机器 \"{name}\"？",
     "editMachine": "编辑机器",
     "addMachine": "添加机器",
+    "dictionary": "字典",
+    "templates": "模板",
+    "filterTemplates": "筛选模板...",
+    "noTemplates": "暂无模板",
+    "saveAsTemplate": "保存选中为模板",
+    "renameTemplate": "重命名模板",
+    "deleteTemplateConfirm": "删除模板 \"{name}\"？",
     "machineName": "名称",
     "baseSpeed": "基础速度",
     "machineTags": "机器标签",
@@ -142,6 +149,11 @@
     "footerEsc": "Esc 关闭"
   },
   "editor": {
+    "file": "文件",
+    "newFile": "新建",
+    "openFile": "打开...",
+    "saveFile": "保存",
+    "saveAsFile": "另存为...",
     "relayout": "重布局",
     "relayoutTitle": "自动排列所有节点",
     "cleanOrphans": "清理孤立节点",
@@ -269,5 +281,17 @@
     "ok": "确定",
     "cancel": "取消",
     "confirm": "确认"
+  },
+  "fileService": {
+    "newProject": "已创建新项目",
+    "failedOpenPath": "无法获取文件路径",
+    "opened": "已打开：{name}",
+    "failedOpen": "打开文件失败：{error}",
+    "failedGetSavePath": "无法获取保存路径",
+    "failedSave": "保存文件失败：{error}",
+    "saved": "已保存：{name}",
+    "reloaded": "已从磁盘重新加载文件",
+    "failedReload": "重新加载失败：{error}",
+    "externalChange": "文件 \"{path}\" 已在外部被修改，是否重新加载？"
   }
 }

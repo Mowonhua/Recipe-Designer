@@ -1,32 +1,43 @@
 <template>
   <aside class="dictionary-panel">
-    <header class="panel-header">{{ $t('dict.title') }}</header>
+    <!-- Diagonal-split header: Dictionary (top-left) / Templates (bottom-right) -->
+    <header class="panel-header-split" :class="{ 'tpl-active': panelMode === 'templates' }">
+      <button class="split-btn dict-btn" @click="panelMode = 'dictionary'">
+        <span class="split-label">{{ $t('dict.dictionary') }}</span>
+      </button>
+      <div class="split-slash"></div>
+      <button class="split-btn tpl-btn" @click="panelMode = 'templates'">
+        <span class="split-label">{{ $t('dict.templates') }}</span>
+      </button>
+    </header>
 
-    <!-- Search -->
-    <div class="search-box">
-      <input
-        v-model="searchQuery"
-        type="text"
-        class="search-input"
-        :placeholder="$t('dict.filterPlaceholder')"
-        @keydown.escape="searchQuery = ''"
-      />
-    </div>
+    <!-- Dictionary mode -->
+    <template v-if="panelMode === 'dictionary'">
+      <!-- Search -->
+      <div class="search-box">
+        <input
+          v-model="searchQuery"
+          type="text"
+          class="search-input"
+          :placeholder="$t('dict.filterPlaceholder')"
+          @keydown.escape="searchQuery = ''"
+        />
+      </div>
 
-    <!-- Tabs -->
-    <nav class="tab-row">
-      <button
-        :class="['tab', { active: activeTab === 'items' }]"
-        @click="activeTab = 'items'"
-      >{{ $t('dict.tabItems') }}</button>
-      <button
-        :class="['tab', { active: activeTab === 'machines' }]"
-        @click="activeTab = 'machines'"
-      >{{ $t('dict.tabMachines') }}</button>
-    </nav>
+      <!-- Tabs -->
+      <nav class="tab-row">
+        <button
+          :class="['tab', { active: activeTab === 'items' }]"
+          @click="activeTab = 'items'"
+        >{{ $t('dict.tabItems') }}</button>
+        <button
+          :class="['tab', { active: activeTab === 'machines' }]"
+          @click="activeTab = 'machines'"
+        >{{ $t('dict.tabMachines') }}</button>
+      </nav>
 
-    <!-- List -->
-    <section class="list" @click="closeContextMenu" @scroll="closeContextMenu">
+      <!-- List -->
+      <section class="list" @click="closeContextMenu" @scroll="closeContextMenu">
       <!-- Items tab -->
       <template v-if="activeTab === 'items'">
         <template v-for="node in filteredItems" :key="node.id">
@@ -112,8 +123,46 @@
         </div>
       </template>
     </section>
+    </template>
 
-    <!-- Context Menu -->
+    <!-- Templates mode -->
+    <template v-if="panelMode === 'templates'">
+      <div class="search-box">
+        <input
+          v-model="tplSearchQuery"
+          type="text"
+          class="search-input"
+          :placeholder="$t('dict.filterTemplates')"
+          @keydown.escape="tplSearchQuery = ''"
+        />
+      </div>
+      <section class="list">
+        <template v-for="tpl in filteredTemplates" :key="tpl.id">
+          <div
+            class="list-item"
+            draggable="true"
+            @dragstart="onDragStartTemplate($event, tpl.id)"
+            @contextmenu.prevent.stop="openTplContextMenu($event, tpl)"
+          >
+            <span class="dot tpl-dot"></span>
+            <span class="item-name">{{ tpl.name }}</span>
+            <span class="tpl-info">{{ tpl.nodes.length }} nodes</span>
+          </div>
+        </template>
+
+        <div v-if="filteredTemplates.length === 0" class="empty-hint">
+          {{ $t('dict.noTemplates') }}
+        </div>
+
+        <!-- Save current selection as template -->
+        <div class="list-item add-item" @click="saveAsTemplate">
+          <span class="add-icon">+</span>
+          <span class="item-name">{{ $t('dict.saveAsTemplate') }}</span>
+        </div>
+      </section>
+    </template>
+
+    <!-- Context Menu (shared) -->
     <Teleport to="body">
       <div
         v-if="contextMenu.show"
@@ -155,20 +204,32 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, nextTick, onMounted, onUnmounted } from 'vue';
+import { ref, computed, nextTick, onMounted, onUnmounted, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { useStore, type ItemNode, type Machine } from '../store';
+import { useStore, type ItemNode, type Machine, type Template } from '../store';
 import ConfirmDialog from './ConfirmDialog.vue';
 import MachineEditorDrawer from './MachineEditorDrawer.vue';
+import { loadTemplates, saveTemplates } from '../services/file-service';
 
 const { t } = useI18n();
 const store = useStore();
+
+// --- Panel Mode ---
+const panelMode = ref<'dictionary' | 'templates'>('dictionary');
 
 // --- Tabs ---
 const activeTab = ref<'items' | 'machines'>('items');
 
 // --- Search ---
 const searchQuery = ref('');
+const tplSearchQuery = ref('');
+
+const filteredTemplates = computed(() => {
+  const q = tplSearchQuery.value.toLowerCase().trim();
+  const tpls = store.getTemplates();
+  if (!q) return tpls;
+  return tpls.filter(t => t.name.toLowerCase().includes(q));
+});
 
 const filteredItems = computed(() => {
   const q = searchQuery.value.toLowerCase().trim();
@@ -296,6 +357,33 @@ function onDragStartMachine(event: DragEvent, machineId: string) {
   event.dataTransfer!.effectAllowed = 'copy';
 }
 
+function onDragStartTemplate(event: DragEvent, templateId: string) {
+  event.dataTransfer?.setData('text/plain', JSON.stringify({ type: 'dictionary-template', templateId }));
+  event.dataTransfer!.effectAllowed = 'copy';
+}
+
+// --- Template Actions ---
+
+function saveAsTemplate() {
+  // Request Editor to get selected node IDs
+  window.dispatchEvent(new CustomEvent('request-create-template'));
+}
+
+function deleteTemplateById(tplId: string) {
+  const tpl = store.getTemplates().find(t => t.id === tplId);
+  if (!tpl) return;
+  confirmDialog.value = {
+    show: true,
+    title: t('dialog.confirm'),
+    message: t('dict.deleteTemplateConfirm', { name: tpl.name }),
+    confirmDanger: true,
+    onConfirm: () => {
+      store.deleteTemplate(tplId);
+      saveTemplates(store.getTemplates());
+    },
+  };
+}
+
 // --- Fly-to (dispatch to Editor) ---
 function flyToNode(nodeId: string) {
   if (!store.isNodeOnCanvas(nodeId)) return;
@@ -312,7 +400,7 @@ const contextMenu = ref<{
   show: boolean;
   x: number;
   y: number;
-  type: 'item' | 'machine';
+  type: 'item' | 'machine' | 'template';
   targetId: string;
 }>({
   show: false,
@@ -368,11 +456,32 @@ function closeContextMenu() {
   contextMenu.value.show = false;
 }
 
+function openTplContextMenu(event: MouseEvent, tpl: Template) {
+  const menuWidth = 120;
+  const menuHeight = 72;
+  contextMenu.value = {
+    show: true,
+    x: Math.min(event.clientX, window.innerWidth - menuWidth - 8),
+    y: Math.min(event.clientY, window.innerHeight - menuHeight - 8),
+    type: 'template',
+    targetId: tpl.id,
+  };
+}
+
 function contextMenuEdit() {
   const { type, targetId } = contextMenu.value;
   closeContextMenu();
   if (type === 'item') {
     startEditItem(targetId);
+  } else if (type === 'template') {
+    const tpl = store.getTemplates().find(t => t.id === targetId);
+    if (tpl) {
+      const newName = window.prompt(t('dict.renameTemplate'), tpl.name);
+      if (newName && newName.trim()) {
+        store.updateTemplate(targetId, { name: newName.trim() });
+        saveTemplates(store.getTemplates());
+      }
+    }
   } else {
     nextTick(() => {
       const machine = store.machines.find(m => m.id === targetId);
@@ -386,6 +495,8 @@ function contextMenuDelete() {
   closeContextMenu();
   if (type === 'item') {
     deleteItem(targetId);
+  } else if (type === 'template') {
+    deleteTemplateById(targetId);
   } else {
     deleteMachineById(targetId);
   }
@@ -398,8 +509,22 @@ function onKeyDown(e: KeyboardEvent) {
   }
 }
 
-onMounted(() => window.addEventListener('keydown', onKeyDown));
+// --- Template lifecycle ---
+onMounted(async () => {
+  window.addEventListener('keydown', onKeyDown);
+  // Load templates from disk
+  const tpls = await loadTemplates();
+  if (tpls.length > 0) {
+    store.seedTemplates(tpls);
+  }
+});
+
 onUnmounted(() => window.removeEventListener('keydown', onKeyDown));
+
+// Auto-save templates on change
+watch(() => store.getTemplates(), (newTpls) => {
+  saveTemplates(newTpls);
+}, { deep: true });
 </script>
 
 <style scoped>
@@ -415,21 +540,72 @@ onUnmounted(() => window.removeEventListener('keydown', onKeyDown));
   z-index: 10;
 }
 
-.panel-header {
-  padding: var(--spacing-lg) var(--spacing-md);
-  font-size: 24px;
-  font-weight: 900;
-  text-transform: uppercase;
-  letter-spacing: -0.5px;
-  background: var(--bg-color);
-  color: var(--text-primary);
-  border-bottom: var(--border-width-lg) solid var(--border-default);
+.panel-header-split {
   position: relative;
-  z-index: 1;
+  height: 80px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  overflow: hidden;
+  border-bottom: var(--border-width-lg) solid var(--border-default);
+}
+
+.split-btn {
+  all: unset;
+  cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  text-align: center;
+  position: relative;
+  z-index: 1;
+  transition: background var(--transition-fast);
+}
+
+.dict-btn {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.tpl-btn {
+  grid-column: 2;
+  grid-row: 2;
+}
+
+.split-btn:hover {
+  background: var(--bg-hover);
+}
+
+.panel-header-split.dict-active .dict-btn,
+.panel-header-split.tpl-active .tpl-btn {
+  background: var(--bg-color);
+}
+
+.split-label {
+  font-family: var(--font-ui);
+  font-size: 14px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text-primary);
+}
+
+.split-slash {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.split-slash::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 200%;
+  height: 6px;
+  background: var(--text-primary);
+  transform: translate(-50%, -50%) rotate(-35deg);
+  opacity: 0.85;
 }
 
 .search-box {
@@ -624,6 +800,25 @@ onUnmounted(() => window.removeEventListener('keydown', onKeyDown));
   border: var(--border-width-sm) solid var(--border-default);
   padding: 4px 6px;
   box-shadow: var(--shadow-node);
+}
+
+.tpl-dot {
+  background: var(--accent-violet);
+}
+
+.tpl-info {
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: var(--text-muted);
+  margin-left: auto;
+}
+
+.empty-hint {
+  padding: var(--spacing-xl);
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-style: italic;
 }
 
 .add-item {

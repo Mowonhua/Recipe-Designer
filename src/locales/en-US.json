@@ -39,6 +39,13 @@
     "deleteMachineConfirm": "Delete machine \"{name}\"?",
     "editMachine": "Edit Machine",
     "addMachine": "Add Machine",
+    "dictionary": "Dictionary",
+    "templates": "Templates",
+    "filterTemplates": "Filter templates...",
+    "noTemplates": "No templates saved",
+    "saveAsTemplate": "Save Selection as Template",
+    "renameTemplate": "Rename Template",
+    "deleteTemplateConfirm": "Delete template \"{name}\"?",
     "machineName": "Name",
     "baseSpeed": "Base Speed",
     "machineTags": "Machine Tags",
@@ -142,6 +149,11 @@
     "footerEsc": "Esc Close"
   },
   "editor": {
+    "file": "File",
+    "newFile": "New",
+    "openFile": "Open...",
+    "saveFile": "Save",
+    "saveAsFile": "Save As...",
     "relayout": "Relayout",
     "relayoutTitle": "Auto-layout all nodes",
     "cleanOrphans": "Clean Orphans",
@@ -269,5 +281,17 @@
     "ok": "OK",
     "cancel": "Cancel",
     "confirm": "Confirm"
+  },
+  "fileService": {
+    "newProject": "New project created",
+    "failedOpenPath": "Failed to get file path",
+    "opened": "Opened: {name}",
+    "failedOpen": "Failed to open file: {error}",
+    "failedGetSavePath": "Failed to get save path",
+    "failedSave": "Failed to save file: {error}",
+    "saved": "Saved: {name}",
+    "reloaded": "File reloaded from disk",
+    "failedReload": "Failed to reload: {error}",
+    "externalChange": "File \"{path}\" was modified externally. Reload?"
   }
 }
