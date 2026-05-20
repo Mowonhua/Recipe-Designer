@@ -9,6 +9,7 @@
     "dialog:default",
     "fs:default",
     "fs:read-files",
-    "fs:write-files"
+    "fs:write-files",
+    "core:window:allow-set-title"
   ]
 }

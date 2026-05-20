@@ -281,15 +281,12 @@
         <!-- Relations Tab -->
         <n-tab-pane name="relations" :tab="$t('drawer.tabRelations')">
           <div class="section-label">{{ $t('drawer.downstream') }}</div>
-          <template v-for="group in downstreamBySlot" :key="group.slotId">
-            <div class="group-label" style="margin-top: 8px;">{{ group.slotName }}</div>
-            <div v-for="rel in group.items" :key="rel.id" class="relation-row" @click="flyTo(rel.id)">
-              <span class="io-dot" :style="{ background: rel.color }"></span>
-              <span class="relation-name">{{ rel.name }}<template v-if="rel.type === 'byproduct'"> {{ $t('drawer.byproduct') }}</template><template v-if="rel.type === 'catalyst'"> {{ $t('drawer.catalyst') }}</template></span>
-              <span class="relation-qty">×{{ rel.quantity }}</span>
-            </div>
-          </template>
-          <div v-if="downstreamBySlot.length === 0" class="no-data">{{ $t('drawer.noDownstream') }}</div>
+          <div v-for="rel in downstreamItems" :key="rel.id" class="relation-row" @click="flyTo(rel.id)">
+            <span class="io-dot" :style="{ background: rel.color }"></span>
+            <span class="relation-name">{{ rel.name }}<template v-if="rel.type === 'byproduct'"> {{ $t('drawer.byproduct') }}</template><template v-if="rel.type === 'catalyst'"> {{ $t('drawer.catalyst') }}</template></span>
+            <span class="relation-qty">×{{ rel.quantity }}</span>
+          </div>
+          <div v-if="downstreamItems.length === 0" class="no-data">{{ $t('drawer.noDownstream') }}</div>
 
           <div class="section-label" style="margin-top: 16px;">{{ $t('drawer.upstream') }}</div>
           <template v-for="group in upstreamBySlot" :key="group.slotId">
@@ -900,57 +897,19 @@ const upstreamBySlot = computed(() => {
   return result;
 });
 
-const downstreamBySlot = computed(() => {
+const downstreamItems = computed(() => {
   if (!props.node) return [];
   const edges = store.edges.filter(e => e.source === props.node!.id);
-  const slotMap = new Map<string, RelationItem[]>();
-  const slotOrder: string[] = [];
-  for (const slot of props.node.slots) {
-    slotMap.set(slot.id, []);
-    slotOrder.push(slot.id);
-  }
-  const unknownKey = '__unknown__';
-  slotMap.set(unknownKey, []);
-
-  for (const edge of edges) {
+  return edges.map(edge => {
     const tgt = store.nodes.find(n => n.id === edge.target);
-    const item: RelationItem = {
+    return {
       id: edge.target,
       name: tgt?.name || '?',
       color: tgt?.color || '#64748b',
       quantity: edge.quantity,
       type: edge.edge_type,
-    };
-    let foundSlot: string | null = null;
-    for (const slot of props.node.slots) {
-      if (slot.secondary_outputs.some(so => so.item_id === edge.target)) {
-        foundSlot = slot.id;
-        break;
-      }
-    }
-    if (foundSlot && slotMap.has(foundSlot)) {
-      slotMap.get(foundSlot)!.push(item);
-    } else {
-      const activeId = props.node.active_slot_id || props.node.slots[0]?.id;
-      if (activeId && slotMap.has(activeId)) {
-        slotMap.get(activeId)!.push(item);
-      } else {
-        slotMap.get(unknownKey)!.push(item);
-      }
-    }
-  }
-
-  const result: SlotGroup[] = [];
-  for (const sid of slotOrder) {
-    const items = slotMap.get(sid)!;
-    if (items.length > 0) {
-      result.push({ slotId: sid, slotName: props.node.slots.find(s => s.id === sid)?.name || '?', items });
-    }
-  }
-  if (slotMap.get(unknownKey)!.length > 0) {
-    result.push({ slotId: unknownKey, slotName: '?', items: slotMap.get(unknownKey)! });
-  }
-  return result;
+    } as RelationItem;
+  });
 });
 
 function flyTo(nodeId: string) {
