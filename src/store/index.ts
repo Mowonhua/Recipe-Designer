@@ -643,8 +643,10 @@ export const useStore = defineStore('recipe-designer', () => {
     if (node.slots.length === 0) return;
     const machine = machines.value.find(m => m.id === machineId);
     if (!machine) return;
-    for (const slot of node.slots) {
-      slot.machine_id = machineId;
+    const activeSlotId = node.active_slot_id || node.slots[0]?.id;
+    const activeSlot = node.slots.find(s => s.id === activeSlotId);
+    if (activeSlot) {
+      activeSlot.machine_id = machineId;
     }
     changeCounter.value++;
   }

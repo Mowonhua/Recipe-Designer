@@ -4,11 +4,14 @@
     :class="{
       orphan: data.isOrphan,
       selected,
-      'drag-target': isDragHovered,
+      'drag-target': isDragHovered || isMachineDragHovered,
     }"
     :style="{ '--node-color': data.color || '#3b82f6' }"
     @mouseenter="onMouseEnter"
     @mouseleave="onMouseLeave"
+    @dragover.prevent="onDragOverNode"
+    @dragleave="onDragLeaveNode"
+    @drop.prevent="onDropNode"
   >
     <Handle
       type="source"
@@ -118,11 +121,46 @@ const store = useStore();
 const isHovered = ref(false);
 const isConnecting = inject<Ref<boolean>>('isConnecting', ref(false));
 const isDragHovered = ref(false);
+const isMachineDragHovered = ref(false);
 const iconIsImage = computed(() => props.data.icon?.startsWith('data:image/') ?? false);
 
 // New slot inline rename
 const renameSlotId = ref<string | null>(null);
 const renameValue = ref('');
+
+function onDragOverNode(event: DragEvent) {
+  const types = event.dataTransfer?.types;
+  if (types && (Array.from(types).includes('text/plain') || Array.from(types).includes('text/uri-list'))) {
+    isMachineDragHovered.value = true;
+  }
+}
+
+function onDragLeaveNode(event: DragEvent) {
+  const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+  if (
+    event.clientX <= rect.left ||
+    event.clientX >= rect.right ||
+    event.clientY <= rect.top ||
+    event.clientY >= rect.bottom
+  ) {
+    isMachineDragHovered.value = false;
+  }
+}
+
+function onDropNode(event: DragEvent) {
+  isMachineDragHovered.value = false;
+  const raw = event.dataTransfer?.getData('text/plain');
+  if (!raw) return;
+  try {
+    const data = JSON.parse(raw);
+    if (data.type === 'dictionary-machine') {
+      store.setNodeMachine(props.data.id, data.machineId);
+      event.stopPropagation();
+    }
+  } catch (e) {
+    // ignore
+  }
+}
 
 function onMouseEnter() {
   isHovered.value = true;

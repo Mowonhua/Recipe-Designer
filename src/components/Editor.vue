@@ -1255,7 +1255,8 @@ function closeDrawer() {
 
 // --- Canvas drop ---
 function onDragOverCanvas(event: DragEvent) {
-  if (event.dataTransfer?.types.includes('text/plain')) {
+  const types = event.dataTransfer?.types;
+  if (types && (Array.from(types).includes('text/plain') || Array.from(types).includes('text/uri-list'))) {
     event.preventDefault();
   }
 }
