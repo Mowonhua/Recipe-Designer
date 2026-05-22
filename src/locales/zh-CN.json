@@ -15,7 +15,13 @@
     "bom": "物料计算",
     "relayout": "重布局",
     "createGroup": "创建分组",
-    "disbandGroup": "解散分组"
+    "disbandGroup": "解散分组",
+    "edgeStyle": "连线样式",
+    "edgeStyle_simplebezier": "简易贝塞尔",
+    "edgeStyle_default": "标准贝塞尔",
+    "edgeStyle_straight": "直线",
+    "edgeStyle_step": "直角折线",
+    "edgeStyle_smoothstep": "平滑阶梯"
   },
   "dict": {
     "title": "字典",

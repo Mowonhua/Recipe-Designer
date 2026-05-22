@@ -3,6 +3,20 @@ import { ref, computed, watch } from 'vue';
 import { v4 as uuidv4 } from 'uuid';
 import { findOrphans, type ValidationError } from './validation';
 
+// Edge style preferences
+export const EDGE_STYLES = ['simplebezier', 'default', 'straight', 'step', 'smoothstep'] as const;
+export type EdgeStyle = typeof EDGE_STYLES[number];
+
+function loadEdgeStyle(): EdgeStyle {
+  try {
+    const raw = localStorage.getItem('rd-edge-style');
+    if (raw && (EDGE_STYLES as readonly string[]).includes(raw)) {
+      return raw as EdgeStyle;
+    }
+  } catch { /* localStorage unavailable */ }
+  return 'simplebezier';
+}
+
 // --- Data Models (from Design Scheme) ---
 export interface GlobalEffect {
   id: string;
@@ -317,7 +331,12 @@ export const useStore = defineStore('recipe-designer', () => {
     game: 'New Game',
     viewport: { zoom: 1.0, center: { x: 0, y: 0 } },
   });
-  
+
+  const appEdgeStyle = ref<EdgeStyle>(loadEdgeStyle());
+  watch(appEdgeStyle, (val) => {
+    try { localStorage.setItem('rd-edge-style', val); } catch { /* */ }
+  });
+
   const global_effects = ref<GlobalEffect[]>([]);
   const proliferators = ref<Proliferator[]>([]);
   const tag_pool = ref<TagPool>({ recipe_tags: [], machine_tags: [] });
@@ -950,6 +969,8 @@ export const useStore = defineStore('recipe-designer', () => {
   return {
     version,
     meta,
+    appEdgeStyle,
+    EDGE_STYLES,
     global_effects,
     proliferators,
     tag_pool,

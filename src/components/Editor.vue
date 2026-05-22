@@ -131,6 +131,14 @@
             @update:value="onLocaleChange"
           />
         </div>
+        <div class="form-group">
+          <label>{{ $t('settings.edgeStyle') }}</label>
+          <n-select
+            v-model:value="appEdgeStyle"
+            :options="edgeStyleOptions"
+            size="medium"
+          />
+        </div>
         <div class="settings-section">
           <div class="section-label">{{ $t('settings.shortcuts') }}</div>
           <div class="shortcut-list">
@@ -212,12 +220,25 @@ const { t } = useI18n();
 const store = useStore();
 const bomStore = useBomStore();
 const message = useMessage();
+
+const appEdgeStyle = computed({
+  get: () => store.appEdgeStyle,
+  set: (val) => { store.appEdgeStyle = val as import('../store').EdgeStyle; },
+});
+
+const edgeStyleOptions = computed(() =>
+  store.EDGE_STYLES.map(s => ({
+    label: t(`settings.edgeStyle_${s}`),
+    value: s,
+  }))
+);
+
 const { setCenter, viewport, fitView } = useVueFlow();
 
 const nodeTypes: any = { item: markRaw(ItemNode), group: markRaw(GroupNode) };
 
 const defaultEdgeOptions = {
-  type: 'simplebezier',
+  type: store.appEdgeStyle,
   animated: true,
   style: { stroke: '#64748b', strokeWidth: 2, opacity: 0.8 },
 };
@@ -505,7 +526,7 @@ function syncFromStore() {
     const displaySource = sourceGroup || se.source;
     const displayTarget = targetGroup || se.target;
 
-    const edgeType = 'simplebezier';
+    const edgeType = store.appEdgeStyle;
     const edgeStyle = se.edge_type === 'byproduct'
       ? { stroke: 'var(--accent-tan)', strokeWidth: 1.5, opacity: 0.7, strokeDasharray: '5,5' }
       : se.edge_type === 'catalyst'

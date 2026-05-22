@@ -15,7 +15,13 @@
     "bom": "BOM Calculator",
     "relayout": "Relayout",
     "createGroup": "Create Group",
-    "disbandGroup": "Disband Group"
+    "disbandGroup": "Disband Group",
+    "edgeStyle": "Edge Style",
+    "edgeStyle_simplebezier": "Simple Bezier",
+    "edgeStyle_default": "Default Bezier",
+    "edgeStyle_straight": "Straight",
+    "edgeStyle_step": "Step",
+    "edgeStyle_smoothstep": "Smooth Step"
   },
   "dict": {
     "title": "Dictionary",
