@@ -633,7 +633,7 @@ function syncFromStore() {
 
 // Watch for structural changes
 watch(
-  () => [store.nodes.length, store.edges.length, store.changeCounter, store.groups.length],
+  () => [store.nodes.length, store.edges.length, store.changeCounter, store.groups.length, store.appEdgeStyle],
   () => { syncFromStore(); },
   { flush: 'sync' },
 );
