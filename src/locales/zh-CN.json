@@ -21,7 +21,11 @@
     "edgeStyle_default": "标准贝塞尔",
     "edgeStyle_straight": "直线",
     "edgeStyle_step": "直角折线",
-    "edgeStyle_smoothstep": "平滑阶梯"
+    "edgeStyle_smoothstep": "平滑阶梯",
+    "layoutDirection": "默认布局方向",
+    "layoutDirection_BT": "自底向上",
+    "layoutDirection_TB": "自顶向下",
+    "layoutDirection_LR": "自左向右"
   },
   "dict": {
     "title": "字典",
@@ -161,6 +165,9 @@
     "saveAsFile": "另存为...",
     "relayout": "重布局",
     "relayoutTitle": "自动排列所有节点",
+    "relayoutBT": "重布局 (自底向上)",
+    "relayoutTB": "重布局 (自顶向下)",
+    "relayoutLR": "重布局 (自左向右)",
     "cleanOrphans": "清理孤立节点",
     "cleanOrphansTitle": "删除所有孤立节点",
     "bom": "物料计算",

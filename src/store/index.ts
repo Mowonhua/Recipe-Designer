@@ -17,6 +17,20 @@ function loadEdgeStyle(): EdgeStyle {
   return 'simplebezier';
 }
 
+// Layout direction preferences
+export const LAYOUT_DIRECTIONS = ['BT', 'TB', 'LR'] as const;
+export type LayoutDirection = typeof LAYOUT_DIRECTIONS[number];
+
+function loadLayoutDirection(): LayoutDirection {
+  try {
+    const raw = localStorage.getItem('rd-layout-direction');
+    if (raw && (LAYOUT_DIRECTIONS as readonly string[]).includes(raw)) {
+      return raw as LayoutDirection;
+    }
+  } catch { /* */ }
+  return 'BT';
+}
+
 // --- Data Models (from Design Scheme) ---
 export interface GlobalEffect {
   id: string;
@@ -335,6 +349,11 @@ export const useStore = defineStore('recipe-designer', () => {
   const appEdgeStyle = ref<EdgeStyle>(loadEdgeStyle());
   watch(appEdgeStyle, (val) => {
     try { localStorage.setItem('rd-edge-style', val); } catch { /* */ }
+  });
+
+  const appLayoutDirection = ref<LayoutDirection>(loadLayoutDirection());
+  watch(appLayoutDirection, (val) => {
+    try { localStorage.setItem('rd-layout-direction', val); } catch { /* */ }
   });
 
   const global_effects = ref<GlobalEffect[]>([]);
@@ -971,6 +990,8 @@ export const useStore = defineStore('recipe-designer', () => {
     meta,
     appEdgeStyle,
     EDGE_STYLES,
+    appLayoutDirection,
+    LAYOUT_DIRECTIONS,
     global_effects,
     proliferators,
     tag_pool,

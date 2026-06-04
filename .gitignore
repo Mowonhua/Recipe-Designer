@@ -3,6 +3,8 @@ icons/
 *.svg
 .*/
 __*__/
+!src/__tests__/
+!src/__tests__/**
 *.grecipe
 
 # Logs

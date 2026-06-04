@@ -58,3 +58,11 @@ Demo factory production line: raw materials (Iron Ore, Copper Ore, Coal, Water, 
 **Rule: before writing any hardcoded color, radius, shadow, or transition value in a component `<style>` block, check `tokens.css` first. Before writing form, input, tag, label, or drawer styles, check `form.css` for a reusable class.** If a matching token or class exists, use it instead of duplicating. Only hardcode values that are truly one-off and not shared across components.
 
 Light & Dark themes togglable via `[data-theme='dark']`. Fonts: Plus Jakarta Sans (`--font-ui`) and JetBrains Mono (`--font-mono`). Vue Flow edge labels use monospace. Node visuals use `color-mix(in srgb, ...)` with per-node `--node-color`.
+
+## Attention Points
+
+Must support i18n.
+
+Don't commit after modifications immediately until the functionality is confirmed by user.
+
+Always commit with Chinese

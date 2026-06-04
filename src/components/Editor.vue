@@ -139,6 +139,14 @@
             size="medium"
           />
         </div>
+        <div class="form-group">
+          <label>{{ $t('settings.layoutDirection') }}</label>
+          <n-select
+            v-model:value="appLayoutDirection"
+            :options="layoutDirectionOptions"
+            size="medium"
+          />
+        </div>
         <div class="settings-section">
           <div class="section-label">{{ $t('settings.shortcuts') }}</div>
           <div class="shortcut-list">
@@ -190,13 +198,13 @@ import '@vue-flow/core/dist/theme-default.css';
 import '@vue-flow/controls/dist/style.css';
 import '@vue-flow/minimap/dist/style.css';
 import { v4 as uuidv4 } from 'uuid';
-import dagre from '@dagrejs/dagre';
-import { forceSimulation, forceCollide, forceY } from 'd3-force';
 import type { Connection, NodeChange, EdgeChange, EdgeMouseEvent } from '@vue-flow/core';
-import type { FlowEdge, RecipeSlot } from '../store';
+import type { FlowEdge, LayoutDirection, RecipeSlot } from '../store';
 import { useStore } from '../store';
 import { useI18n } from 'vue-i18n';
 import { mockNodes, mockEdges, mockMachines, mockGlobalEffects, mockProliferators } from '../data/mock-data';
+import { resolveRectangularCollisions, resolveZoomAwareVerticalGap } from '../layout/collision';
+import { calculateSugiyamaLayout } from '../layout/sugiyama';
 import ItemNode from './ItemNode.vue';
 import NodePopover from './NodePopover.vue';
 import NodeDrawer from './NodeDrawer.vue';
@@ -233,6 +241,18 @@ const edgeStyleOptions = computed(() =>
   }))
 );
 
+const appLayoutDirection = computed({
+  get: () => store.appLayoutDirection,
+  set: (val) => { store.appLayoutDirection = val as LayoutDirection; },
+});
+
+const layoutDirectionOptions = computed(() =>
+  store.LAYOUT_DIRECTIONS.map(d => ({
+    label: t(`settings.layoutDirection_${d}`),
+    value: d,
+  }))
+);
+
 const { setCenter, viewport, fitView } = useVueFlow();
 
 const nodeTypes: any = { item: markRaw(ItemNode), group: markRaw(GroupNode) };
@@ -262,221 +282,62 @@ function isOrphan(nodeId: string): boolean {
 
 // --- Build Vue Flow objects from store ---
 function applyLayout() {
-  const g = new dagre.graphlib.Graph();
-  g.setGraph({ rankdir: 'BT', nodesep: 60, ranksep: 80, align: 'UL' });
-  g.setDefaultEdgeLabel(() => ({}));
-
-  store.nodes.forEach(n => {
-    g.setNode(n.id, { width: 170, height: 60 });
-  });
-
-  store.edges.forEach(e => {
-    g.setEdge(e.source, e.target);
-  });
-
-  dagre.layout(g);
-
-  store.nodes.forEach(n => {
-    const nodeWithPos = g.node(n.id);
-    if (!nodeWithPos) return;
-    const newPos = {
-      x: nodeWithPos.x - nodeWithPos.width / 2,
-      y: nodeWithPos.y - nodeWithPos.height / 2
-    };
-    if (n.position.x !== newPos.x || n.position.y !== newPos.y) {
-      n.position = newPos; // Update direct to skip store move history for initial layout, or use moves.
-    }
-  });
-
-  // Fit view after a small delay to ensure rendering
-  setTimeout(() => {
-    // Optionally fitView()
-  }, 50);
+  // 初始化布局不写入 undo 历史，避免加载示例数据后用户第一次撤销就回到导入前的自动排列状态。
+  applySugiyamaLayout(store.appLayoutDirection, false);
 }
 
-function relayout() {
-  const nodeIds = new Set(store.nodes.map(n => n.id));
-  if (nodeIds.size === 0) return;
+function relayout(direction?: LayoutDirection) {
+  const dir = direction || store.appLayoutDirection;
+  const moved = applySugiyamaLayout(dir, true);
 
-  // Build adjacency: find edges pointing INTO each node (inputs)
-  const incomingEdges = new Map<string, string[]>(); // targetId -> sourceId[]
-  for (const node of store.nodes) {
-    incomingEdges.set(node.id, []);
-  }
-  for (const e of store.edges) {
-    if (nodeIds.has(e.source) && nodeIds.has(e.target) && (e.edge_type === 'input' || e.edge_type === 'catalyst')) {
-      incomingEdges.get(e.target)?.push(e.source);
-    }
-  }
-
-  // Compute max depth for each node using longest path from any root
-  // Root = node with no incoming input edges (raw materials or disconnected)
-  const depth = new Map<string, number>();
-  const visited = new Set<string>();
-
-  function computeDepth(id: string): number {
-    if (depth.has(id)) return depth.get(id)!;
-    if (visited.has(id)) return 0; // cycle: treat as depth 0
-    visited.add(id);
-
-    const sources = incomingEdges.get(id) || [];
-    if (sources.length === 0) {
-      depth.set(id, 0);
-      return 0;
-    }
-    let maxParentDepth = 0;
-    for (const src of sources) {
-      maxParentDepth = Math.max(maxParentDepth, computeDepth(src));
-    }
-    const d = maxParentDepth + 1;
-    depth.set(id, d);
-    return d;
-  }
-
-  for (const id of nodeIds) {
-    computeDepth(id);
-  }
-
-  // Adjust byproduct depths: a byproduct's level = max(parent product level, its own level from input edges).
-  // Iterate until stable to handle byproduct chains and cascading input propagation.
-  const byproductEdges = store.edges.filter(e => nodeIds.has(e.source) && nodeIds.has(e.target) && e.edge_type === 'byproduct');
-  let changed = true;
-  let iter = 0;
-  while (changed && iter < 200) {
-    changed = false;
-    iter++;
-
-    // Byproduct rule: target depth >= source depth (same level as the recipe that produces it)
-    for (const e of byproductEdges) {
-      const sd = depth.get(e.source) ?? 0;
-      const td = depth.get(e.target) ?? 0;
-      if (td < sd) {
-        depth.set(e.target, sd);
-        changed = true;
-      }
-    }
-
-    // Re-propagate input edges: if a source moved deeper, its consumer must be at least source + 1
-    for (const e of store.edges) {
-      if (!nodeIds.has(e.source) || !nodeIds.has(e.target)) continue;
-      if (e.edge_type !== 'input' && e.edge_type !== 'catalyst') continue;
-      const sd = depth.get(e.source) ?? 0;
-      const td = depth.get(e.target) ?? 0;
-      if (td < sd + 1) {
-        depth.set(e.target, sd + 1);
-        changed = true;
-      }
-    }
-  }
-
-  // Group nodes by depth level
-  const levels = new Map<number, string[]>();
-  let maxLevel = 0;
-  for (const [id, d] of depth) {
-    if (!levels.has(d)) levels.set(d, []);
-    levels.get(d)!.push(id);
-    maxLevel = Math.max(maxLevel, d);
-  }
-
-  // Layout: depth 0 at bottom, maxLevel at top
-  // Y increases downward in Vue Flow, so invert: deeper level = smaller Y (higher on screen)
-  const LAYER_GAP = 160;  // vertical gap between layers
-  const NODE_GAP = 40;    // horizontal gap between nodes in same layer
-  const NODE_W = 170;
-  const NODE_H = 60;
-
-  // First pass: assign Y positions based on depth
-  const newPos = new Map<string, { x: number; y: number }>();
-  for (const [d, ids] of levels) {
-    const y = (maxLevel - d) * LAYER_GAP;
-    for (const id of ids) {
-      newPos.set(id, { x: 0, y });
-    }
-  }
-
-  // Second pass: order nodes within each layer to minimize edge crossings
-  // Use a barycenter heuristic: for each level, sort nodes by the average X of their parents
-  // Start from level 0 (just spread evenly) then work upward
-  for (let d = 0; d <= maxLevel; d++) {
-    const ids = levels.get(d) || [];
-    if (d === 0) {
-      // Distribute level 0 nodes evenly, centered
-      const totalWidth = ids.length * NODE_W + (ids.length - 1) * NODE_GAP;
-      ids.forEach((id, i) => {
-        const pos = newPos.get(id)!;
-        pos.x = -totalWidth / 2 + i * (NODE_W + NODE_GAP);
-      });
-    } else {
-      // Sort by barycenter of parent positions
-      const withBary = ids.map(id => {
-        const parents = incomingEdges.get(id) || [];
-        if (parents.length === 0) {
-          return { id, bary: 0 };
-        }
-        const bary = parents.reduce((sum, pid) => {
-          const ppos = newPos.get(pid);
-          return sum + (ppos ? ppos.x + NODE_W / 2 : 0);
-        }, 0) / parents.length;
-        return { id, bary };
-      });
-      withBary.sort((a, b) => a.bary - b.bary);
-
-      // Assign X positions in sorted order
-      const totalWidth = ids.length * NODE_W + (ids.length - 1) * NODE_GAP;
-      withBary.forEach((item, i) => {
-        const pos = newPos.get(item.id)!;
-        pos.x = -totalWidth / 2 + i * (NODE_W + NODE_GAP);
-      });
-    }
-  }
-
-  // Third pass: use d3-force with locked Y positions to refine X positions
-  // This minimizes edge crossings and adjusts spacing
-  const simNodes = store.nodes.map(n => {
-    const pos = newPos.get(n.id) || { x: 0, y: 0 };
-    return {
-      id: n.id,
-      x: pos.x + NODE_W / 2,
-      y: pos.y + NODE_H / 2,
-      fy: pos.y + NODE_H / 2,  // lock Y to layer
-      targetY: pos.y + NODE_H / 2,
-    };
-  });
-
-  const sim = forceSimulation(simNodes as any)
-    .force('collide', forceCollide((NODE_W + NODE_GAP) / 2))
-    .force('y', forceY((d: any) => d.targetY).strength(1))
-    .stop();
-
-  // Run simulation to convergence
-  for (let i = 0; i < 300; i++) {
-    sim.tick();
-  }
-  sim.stop();
-
-  // Apply positions back
-  const moves: Array<{ id: string; type?: 'node' | 'group'; from: { x: number; y: number }; to: { x: number; y: number } }> = [];
-  for (const sn of simNodes) {
-    const storeNode = store.nodes.find(n => n.id === sn.id);
-    if (!storeNode) continue;
-    const from = { ...storeNode.position };
-    const to = { x: sn.x - NODE_W / 2, y: sn.y - NODE_H / 2 };
-    if (from.x !== to.x || from.y !== to.y) {
-      moves.push({ id: sn.id, type: 'node', from, to });
-      storeNode.position = to;
-    }
-  }
-
-  if (moves.length > 0) {
-    store.moveNodes(moves);
-  }
+  if (!moved) return;
 
   syncFromStore();
 
-  // Fit view after layout
+  // 重布局后等待 Vue Flow 应用节点坐标，再执行视口适配以展示完整 DAG。
   setTimeout(() => {
     fitView({ duration: 400 });
   }, 50);
+}
+
+function applySugiyamaLayout(direction: LayoutDirection, recordHistory: boolean): boolean {
+  if (store.nodes.length === 0) return false;
+
+  const nextPositions = calculateSugiyamaLayout({
+    direction,
+    nodes: store.nodes,
+    edges: store.edges,
+  });
+
+  const moves: Array<{ id: string; type?: 'node' | 'group'; from: { x: number; y: number }; to: { x: number; y: number } }> = [];
+
+  for (const node of store.nodes) {
+    const nextPosition = nextPositions.get(node.id);
+    if (!nextPosition) continue;
+
+    const from = { ...node.position };
+    const to = { x: nextPosition.x, y: nextPosition.y };
+
+    if (from.x !== to.x || from.y !== to.y) {
+      moves.push({ id: node.id, type: 'node', from, to });
+    }
+  }
+
+  if (moves.length === 0) return false;
+
+  if (recordHistory) {
+    // 用户主动重布局时通过 store command 记录位置变化，使整体排列可以被 undo/redo。
+    store.moveNodes(moves);
+  } else {
+    // 初始化布局属于派生展示状态，直接更新节点坐标以避免污染命令历史。
+    const nodeById = new Map(store.nodes.map(node => [node.id, node]));
+    for (const move of moves) {
+      const node = nodeById.get(move.id);
+      if (node) node.position = { ...move.to };
+    }
+  }
+
+  return true;
 }
 
 function syncFromStore() {
@@ -661,15 +522,17 @@ function onPaneClick() {
   cancelEdgeEdit();
 }
 
-// --- Drag tracking ---
+// --- 拖拽位置追踪 ---
 const dragStartPositions = new Map<string, { x: number; y: number }>();
 
 const NODE_W = 170;
 const NODE_H = 60;
-const NODE_GAP = 20;
+const COLLISION_HORIZONTAL_GAP = 2;
+const COLLISION_VERTICAL_GAP = 32;
+const COLLISION_VERTICAL_SCREEN_GAP = 32;
 
 function runCollision(anchoredIds: Set<string>) {
-  // Only participate active roots in collision
+  // 只让画布上的可交互根节点参与防重叠；展开分组内部的子节点由分组边界约束，不在全局推开中移动。
   const activeNodes = nodes.value.filter((n: any) => {
     if (n.type === 'group' && !n.data.collapsed) return false;
     if (n.type === 'item') {
@@ -679,41 +542,50 @@ function runCollision(anchoredIds: Set<string>) {
     return true;
   });
 
-  const simNodes = activeNodes.map((n: any) => {
+  // 将 Vue Flow 节点转换为矩形碰撞输入；折叠分组使用更大的可视尺寸，普通物品节点使用固定节点尺寸。
+  const collisionNodes = activeNodes.map((n: any) => {
     const w = (n.type === 'group' && n.data.collapsed) ? 240 : NODE_W;
     const h = (n.type === 'group' && n.data.collapsed) ? 100 : NODE_H;
-    const radius = Math.max(w, h) / 2 + NODE_GAP / 2;
-    const cx = n.position.x + w / 2;
-    const cy = n.position.y + h / 2;
-    const anchored = anchoredIds.has(n.id);
-    return { id: n.id, x: cx, y: cy, fx: anchored ? cx : undefined, fy: anchored ? cy : undefined, r: radius, w, h };
+    return { id: n.id as string, x: n.position.x, y: n.position.y, width: w, height: h };
   });
 
-  const simulation = forceSimulation(simNodes)
-    .force('collide', forceCollide((d: any) => d.r))
-    .stop();
+  const resolvedPositions = resolveRectangularCollisions({
+    nodes: collisionNodes,
+    anchoredIds,
+    horizontalGap: COLLISION_HORIZONTAL_GAP,
+    verticalGap: resolveZoomAwareVerticalGap({
+      minGraphGap: COLLISION_VERTICAL_GAP,
+      minScreenGap: COLLISION_VERTICAL_SCREEN_GAP,
+      zoom: viewport.value.zoom,
+    }),
+  });
 
-  while (simulation.alpha() > 0.001) {
-    simulation.tick();
-  }
-  simulation.stop();
-
-  // Direct update on local Vue Flow nodes (bypass store)
-  for (const sn of simNodes) {
-    if (anchoredIds.has(sn.id)) continue;
-    const vn = nodes.value.find((n: any) => n.id === sn.id);
+  // 拖拽过程只更新 Vue Flow 本地节点位置；最终 store 写入统一在 onDragStop 中生成一条 undo 记录。
+  for (const [id, position] of resolvedPositions) {
+    if (anchoredIds.has(id)) continue;
+    const vn = nodes.value.find((n: any) => n.id === id);
     if (!vn) continue;
-    let nx = sn.x - sn.w / 2;
-    let ny = sn.y - sn.h / 2;
 
-    if (vn.position.x !== nx || vn.position.y !== ny) {
-      vn.position = { x: nx, y: ny };
+    if (vn.position.x !== position.x || vn.position.y !== position.y) {
+      vn.position = { x: position.x, y: position.y };
+    }
+  }
+}
+
+function syncDraggedPositions(draggedNodes: { id: string; position: { x: number; y: number } }[]) {
+  // Vue Flow 的拖拽事件节点可能早于 v-model 数组完成同步；碰撞前先写入最新拖拽坐标，避免用上一帧位置计算推开距离。
+  for (const draggedNode of draggedNodes) {
+    const localNode = nodes.value.find((n: any) => n.id === draggedNode.id);
+    if (!localNode) continue;
+
+    if (localNode.position.x !== draggedNode.position.x || localNode.position.y !== draggedNode.position.y) {
+      localNode.position = { x: draggedNode.position.x, y: draggedNode.position.y };
     }
   }
 }
 
 function onDragStart(_event: { nodes: { id: string; type: string; position: { x: number; y: number } }[] }) {
-  // Snapshot ALL node positions so undo captures pushed nodes too
+  // 记录所有画布节点的拖拽前坐标，确保被防重叠算法推开的节点也能进入同一条 undo 记录。
   for (const n of nodes.value) {
     dragStartPositions.set(n.id as string, { ...n.position });
   }
@@ -752,27 +624,29 @@ function onDrag(event: { nodes: { id: string; type: string; position: { x: numbe
     }
   }
 
+  syncDraggedPositions(event.nodes);
   const anchoredIds = new Set(event.nodes.map(n => n.id));
   runCollision(anchoredIds);
 }
 
 function onDragStop(event: { nodes: { id: string; type: string; position: { x: number; y: number } }[] }) {
-  // Final collision pass
+  // 拖拽结束时再执行一次最终防重叠，保证鼠标释放后的节点边界状态稳定。
+  syncDraggedPositions(event.nodes);
   const anchoredIds = new Set(event.nodes.map(n => n.id));
   runCollision(anchoredIds);
 
-  // Collect all position changes (dragged + pushed) into one atomic undo entry
+  // 将拖拽节点与被推开节点的位置变化合并为一条原子 undo 记录。
   const moves: Array<{ id: string; type?: 'node' | 'group'; from: { x: number; y: number }; to: { x: number; y: number } }> = [];
   for (const vn of nodes.value) {
     const from = dragStartPositions.get(vn.id as string);
     if (from && (from.x !== vn.position.x || from.y !== vn.position.y)) {
       moves.push({ id: vn.id as string, type: vn.type === 'group' ? 'group' : 'node', from, to: { ...vn.position } });
-      // Also update store position directly
+      // 本地 Vue Flow 节点坐标已经更新，这里同步写回 store 作为后续保存与重绘的数据源。
       if (vn.type === 'group') {
         const sg = store.groups.find(g => g.id === vn.id);
         if (sg) {
           sg.position = { ...vn.position };
-          // If group is collapsed, manually apply translation to its hidden children
+          // 折叠分组移动时其子节点不可见，需要手动把同样位移写回隐藏子节点。
           if (sg.collapsed) {
             const dx = vn.position.x - from.x;
             const dy = vn.position.y - from.y;
@@ -1184,11 +1058,27 @@ const ctxMenuItems = computed<ContextMenuItem[]>(() => {
   if (ctxMenuTargetType.value === 'pane') {
     return [
       {
-        key: 'relayout',
-        label: t('editor.relayout'),
+        key: 'relayout-bt',
+        label: t('editor.relayoutBT'),
         shortcut: shortcutFor('relayout'),
         action: () => {
-          relayout();
+          relayout('BT');
+          closeContextMenu();
+        },
+      },
+      {
+        key: 'relayout-tb',
+        label: t('editor.relayoutTB'),
+        action: () => {
+          relayout('TB');
+          closeContextMenu();
+        },
+      },
+      {
+        key: 'relayout-lr',
+        label: t('editor.relayoutLR'),
+        action: () => {
+          relayout('LR');
           closeContextMenu();
         },
       },
