@@ -66,7 +66,14 @@
       >
         <Background :gap="20" pattern-color="#1a1d24" />
         <Controls position="bottom-right" />
-        <MiniMap position="bottom-right" />
+        <MiniMap
+          position="bottom-right"
+          :node-class-name="getMiniMapNodeClassName"
+          :node-color="getMiniMapNodeColor"
+          :node-stroke-color="getMiniMapNodeStrokeColor"
+          :node-stroke-width="3"
+          :node-border-radius="0"
+        />
         <template #node-item="nodeProps">
           <ItemNode v-bind="nodeProps" />
         </template>
@@ -198,6 +205,7 @@ import { useI18n } from 'vue-i18n';
 import { mockNodes, mockEdges, mockMachines, mockGlobalEffects, mockProliferators } from '../data/mock-data';
 import { resolveRectangularCollisions, resolveZoomAwareVerticalGap } from '../layout/collision';
 import { calculateSugiyamaLayout } from '../layout/sugiyama';
+import { collectSelectionHighlight, type SelectionHighlight } from '../graph/selection-highlight';
 import ItemNode from './ItemNode.vue';
 import RecipeEdge from './RecipeEdge.vue';
 import NodePopover from './NodePopover.vue';
@@ -257,6 +265,133 @@ provide('isConnecting', isConnecting);
 const nodes = ref<any[]>([]);
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const edges = ref<any[]>([]);
+
+type SelectionRenderState = 'highlight' | 'dimmed' | undefined;
+
+// 当前选中的 Vue Flow 节点只作为画布交互状态保存，业务 store 不持久化这类临时显示信息。
+const selectedNodeId = ref<string | null>(null);
+const selectionHighlight = ref<SelectionHighlight>(createEmptySelectionHighlight());
+
+function createEmptySelectionHighlight(): SelectionHighlight {
+  return {
+    nodeIds: new Set<string>(),
+    edgeIds: new Set<string>(),
+  };
+}
+
+function hasSelectionHighlight(): boolean {
+  return selectionHighlight.value.nodeIds.size > 0 || selectionHighlight.value.edgeIds.size > 0;
+}
+
+// 该函数根据当前选中节点和画布可见边重建高亮集合；折叠分组的边已在 syncFromStore 中重定向，所以这里直接读取 Vue Flow 边端点。
+function refreshSelectionHighlight() {
+  if (selectedNodeId.value && !nodes.value.some(node => node.id === selectedNodeId.value)) {
+    selectedNodeId.value = null;
+  }
+
+  selectionHighlight.value = collectSelectionHighlight(selectedNodeId.value, edges.value);
+  applyElementHighlightClasses();
+}
+
+function getNodeSelectionState(nodeId: string): SelectionRenderState {
+  if (!hasSelectionHighlight()) return undefined;
+  return selectionHighlight.value.nodeIds.has(nodeId) ? 'highlight' : 'dimmed';
+}
+
+function getEdgeSelectionState(edgeId: string): SelectionRenderState {
+  if (!hasSelectionHighlight()) return undefined;
+  return selectionHighlight.value.edgeIds.has(edgeId) ? 'highlight' : 'dimmed';
+}
+
+// 该函数合并 BOM 悬停高亮和节点选中高亮，保证不同交互来源只通过 class 影响 Vue Flow 派生视图。
+function buildNodeClassName(nodeId: string): string | undefined {
+  const classNames: string[] = [];
+  const bomHighlightedId = bomStore.highlightedNodeId;
+  const selectionState = getNodeSelectionState(nodeId);
+
+  if (bomHighlightedId) {
+    classNames.push(nodeId === bomHighlightedId ? 'bom-highlight' : 'bom-dimmed');
+  }
+
+  if (selectionState) {
+    classNames.push(`selection-${selectionState}`);
+    if (nodeId === selectedNodeId.value) {
+      classNames.push('selection-focus');
+    }
+  }
+
+  return classNames.length > 0 ? classNames.join(' ') : undefined;
+}
+
+function buildEdgeClassName(edgeId: string): string | undefined {
+  const selectionState = getEdgeSelectionState(edgeId);
+  return selectionState ? `selection-edge-${selectionState}` : undefined;
+}
+
+// 该函数按边类型生成基础样式，再叠加选中高亮或降噪状态；输入不修改业务边，只返回 Vue Flow 渲染 style。
+function buildVisibleEdgeStyle(edgeType: FlowEdge['edge_type'], selectionState?: SelectionRenderState) {
+  const baseStyle = edgeType === 'byproduct'
+    ? { stroke: 'var(--accent-tan)', strokeWidth: 1.5, opacity: 0.7, strokeDasharray: '5,5' }
+    : edgeType === 'catalyst'
+      ? { stroke: 'var(--accent-blue)', strokeWidth: 2, opacity: 0.8 }
+      : { stroke: 'var(--text-dimmed)', strokeWidth: 2, opacity: 0.8 };
+
+  if (selectionState === 'highlight') {
+    return {
+      ...baseStyle,
+      stroke: edgeType === 'input' ? 'var(--accent-amber)' : baseStyle.stroke,
+      strokeWidth: Math.max(Number(baseStyle.strokeWidth), 3),
+      opacity: 1,
+    };
+  }
+
+  if (selectionState === 'dimmed') {
+    return {
+      ...baseStyle,
+      opacity: 0.18,
+    };
+  }
+
+  return baseStyle;
+}
+
+// 该函数把派生高亮状态写入 Vue Flow 节点和边对象，使主画布、边标签和小地图共享同一套显示状态。
+function applyElementHighlightClasses() {
+  for (const node of nodes.value) {
+    node.class = buildNodeClassName(node.id);
+  }
+
+  for (const edge of edges.value) {
+    const selectionState = getEdgeSelectionState(edge.id);
+    edge.class = buildEdgeClassName(edge.id);
+    edge.style = buildVisibleEdgeStyle(edge.data?.edgeType ?? 'input', selectionState);
+    edge.zIndex = selectionState === 'highlight' ? 20 : 0;
+    edge.data = {
+      ...edge.data,
+      selectionState,
+    };
+  }
+}
+
+// 该回调供 MiniMap 读取当前节点的高亮 class，小地图节点与主画布节点保持同一套选中关系。
+function getMiniMapNodeClassName(node: { id: string }): string {
+  return buildNodeClassName(node.id) || '';
+}
+
+// 该回调为小地图节点提供填充色；非关联节点在选中态下降噪，关联节点保留业务颜色。
+function getMiniMapNodeColor(node: { id: string; data?: { color?: string } }): string {
+  const selectionState = getNodeSelectionState(node.id);
+  if (selectionState === 'dimmed') return 'var(--text-disabled)';
+  return node.data?.color || 'var(--bg-surface)';
+}
+
+// 该回调为小地图节点提供描边色；选中节点用红色，其一跳关联节点用黄色，其余节点使用默认边框色。
+function getMiniMapNodeStrokeColor(node: { id: string }): string {
+  const selectionState = getNodeSelectionState(node.id);
+  if (node.id === selectedNodeId.value) return 'var(--accent-red)';
+  if (selectionState === 'highlight') return 'var(--accent-amber)';
+  return 'var(--border-default)';
+}
 
 // 该函数检测节点是否没有任何输入输出边，用于在画布上标记孤立节点。
 function isOrphan(nodeId: string): boolean {
@@ -407,11 +542,7 @@ function syncFromStore() {
     const laneIndex = laneIndices.get(row.laneKey) ?? 0;
     laneIndices.set(row.laneKey, laneIndex + 1);
 
-    const edgeStyle = se.edge_type === 'byproduct'
-      ? { stroke: 'var(--accent-tan)', strokeWidth: 1.5, opacity: 0.7, strokeDasharray: '5,5' }
-      : se.edge_type === 'catalyst'
-        ? { stroke: 'var(--accent-blue)', strokeWidth: 2, opacity: 0.8 }
-        : { stroke: 'var(--text-dimmed)', strokeWidth: 2, opacity: 0.8 };
+    const edgeStyle = buildVisibleEdgeStyle(se.edge_type);
     const animated = true;
 
     return {
@@ -516,6 +647,9 @@ function syncFromStore() {
       });
     }
   }
+
+  // 结构同步可能新增、删除或重定向可见边，需在最终节点/边列表稳定后重新应用选中高亮。
+  refreshSelectionHighlight();
 }
 
 // Watch for structural changes
@@ -550,24 +684,16 @@ function waitForLayoutFrame(): Promise<void> {
   return new Promise(resolve => window.requestAnimationFrame(() => resolve()));
 }
 
-// BOM hover highlighting on canvas nodes
+// BOM 悬停状态变化时只重新合成 Vue Flow class，避免覆盖当前选中节点的一跳关联高亮。
 watch(
   () => bomStore.highlightedNodeId,
-  (id) => {
-    for (const node of nodes.value) {
-      if (id && node.id !== id) {
-        node.class = 'bom-dimmed';
-      } else if (id && node.id === id) {
-        node.class = 'bom-highlight';
-      } else {
-        node.class = undefined;
-      }
-    }
-  },
+  () => { applyElementHighlightClasses(); },
 );
 
 // Close context menu when pane is clicked
 function onPaneClick() {
+  selectedNodeId.value = null;
+  refreshSelectionHighlight();
   closePopover();
   closeContextMenu();
   cancelEdgeEdit();
@@ -807,12 +933,28 @@ function flushRemovals() {
   }
 }
 
+function syncSelectedNodeFromCanvas() {
+  // Vue Flow 可能在同一批 changes 后才写回 selected 字段；等待 DOM/响应式队列后读取最终选中节点。
+  const selectedNode = [...nodes.value].reverse().find(node => node.selected);
+  selectedNodeId.value = selectedNode?.id ?? null;
+  refreshSelectionHighlight();
+}
+
 function onNodesChange(changes: NodeChange[]) {
+  let selectionChanged = false;
+
   for (const c of changes) {
     if (c.type === 'remove') {
       pendingRemovals.push({ type: 'node', id: c.id });
+    } else if (c.type === 'select') {
+      selectionChanged = true;
     }
   }
+
+  if (selectionChanged) {
+    nextTick(() => { syncSelectedNodeFromCanvas(); });
+  }
+
   if (!removalTimer) removalTimer = setTimeout(flushRemovals, 0);
 }
 
@@ -998,6 +1140,10 @@ const popoverPosition = computed(() => {
 });
 
 function onNodeClick(event: any) {
+  // 节点点击立即更新高亮来源，避免等待 Vue Flow selection change 时出现一帧延迟。
+  selectedNodeId.value = event.node.id as string;
+  refreshSelectionHighlight();
+
   const nodeData = event.node.data;
   if (!nodeData || !nodeData.id) return;
   popoverNodeId.value = nodeData.id;
@@ -1625,6 +1771,50 @@ function onTemplateNameConfirm(name: string) {
 .bom-dimmed {
   opacity: 0.25;
   transition: opacity 0.2s ease;
+}
+
+/* 选中节点的一跳关联高亮由 Vue Flow class 驱动，主画布节点和小地图节点共享同名状态类。 */
+.vue-flow__node.selection-highlight {
+  opacity: 1;
+  transition: opacity var(--transition-fast) var(--ease-smooth),
+              filter var(--transition-fast) var(--ease-smooth);
+}
+
+.vue-flow__node.selection-highlight .item-node,
+.vue-flow__node.selection-highlight .group-node {
+  border-color: var(--accent-amber);
+  box-shadow: var(--shadow-node-hover);
+}
+
+.vue-flow__node.selection-focus {
+  z-index: 60 !important;
+}
+
+.vue-flow__node.selection-focus .item-node,
+.vue-flow__node.selection-focus .group-node {
+  border-color: var(--accent-red);
+}
+
+.vue-flow__node.selection-dimmed {
+  opacity: 0.24;
+  transition: opacity var(--transition-fast) var(--ease-smooth);
+}
+
+.vue-flow__edge.selection-edge-highlight {
+  z-index: 40;
+}
+
+.vue-flow__minimap-node.selection-highlight {
+  opacity: 1;
+  stroke: var(--accent-amber);
+}
+
+.vue-flow__minimap-node.selection-focus {
+  stroke: var(--accent-red);
+}
+
+.vue-flow__minimap-node.selection-dimmed {
+  opacity: 0.24;
 }
 
 .settings-modal {

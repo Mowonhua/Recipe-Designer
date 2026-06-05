@@ -10,7 +10,7 @@
   <EdgeLabelRenderer v-if="labelText">
     <div
       class="recipe-edge-label nodrag nopan"
-      :class="`edge-${edgeType}`"
+      :class="[`edge-${edgeType}`, selectionLabelClass]"
       :style="labelStyle"
     >
       {{ labelText }}
@@ -33,12 +33,17 @@ interface RecipeEdgeData {
   layoutDirection: LayoutDirection;
   laneIndex: number;
   laneCount: number;
+  selectionState?: 'highlight' | 'dimmed';
 }
 
 const props = defineProps<EdgeProps<RecipeEdgeData>>();
 
 const edgeType = computed(() => props.data?.edgeType ?? 'input');
 const labelText = computed(() => typeof props.label === 'string' ? props.label : '');
+const selectionLabelClass = computed(() => {
+  // 边标签跟随画布选中高亮状态：关联边标签突出显示，非关联边标签降低视觉权重。
+  return props.data?.selectionState ? `selection-label-${props.data.selectionState}` : '';
+});
 
 const route = computed(() => getRecipeEdgeRoute({
   sourceX: props.sourceX,
@@ -79,5 +84,16 @@ const labelStyle = computed(() => ({
 
 .recipe-edge-label.edge-catalyst {
   border-color: var(--accent-blue);
+}
+
+.recipe-edge-label.selection-label-highlight {
+  border-color: var(--accent-amber);
+  background: var(--accent-amber);
+  color: var(--border-default);
+  box-shadow: var(--shadow-node-hover);
+}
+
+.recipe-edge-label.selection-label-dimmed {
+  opacity: 0.18;
 }
 </style>
