@@ -38,6 +38,7 @@
         v-model:nodes="nodes"
         v-model:edges="edges"
         :node-types="nodeTypes"
+        :edge-types="edgeTypes"
         :default-edge-options="defaultEdgeOptions"
         :min-zoom="0.1"
         :max-zoom="3"
@@ -139,14 +140,6 @@
             size="medium"
           />
         </div>
-        <div class="form-group">
-          <label>{{ $t('settings.layoutDirection') }}</label>
-          <n-select
-            v-model:value="appLayoutDirection"
-            :options="layoutDirectionOptions"
-            size="medium"
-          />
-        </div>
         <div class="settings-section">
           <div class="section-label">{{ $t('settings.shortcuts') }}</div>
           <div class="shortcut-list">
@@ -198,7 +191,7 @@ import '@vue-flow/core/dist/theme-default.css';
 import '@vue-flow/controls/dist/style.css';
 import '@vue-flow/minimap/dist/style.css';
 import { v4 as uuidv4 } from 'uuid';
-import type { Connection, NodeChange, EdgeChange, EdgeMouseEvent } from '@vue-flow/core';
+import type { Connection, NodeChange, EdgeChange, EdgeMouseEvent, EdgeTypesObject, NodeTypesObject } from '@vue-flow/core';
 import type { FlowEdge, LayoutDirection, RecipeSlot } from '../store';
 import { useStore } from '../store';
 import { useI18n } from 'vue-i18n';
@@ -206,6 +199,7 @@ import { mockNodes, mockEdges, mockMachines, mockGlobalEffects, mockProliferator
 import { resolveRectangularCollisions, resolveZoomAwareVerticalGap } from '../layout/collision';
 import { calculateSugiyamaLayout } from '../layout/sugiyama';
 import ItemNode from './ItemNode.vue';
+import RecipeEdge from './RecipeEdge.vue';
 import NodePopover from './NodePopover.vue';
 import NodeDrawer from './NodeDrawer.vue';
 import GroupNode from './GroupNode.vue';
@@ -241,46 +235,37 @@ const edgeStyleOptions = computed(() =>
   }))
 );
 
-const appLayoutDirection = computed({
-  get: () => store.appLayoutDirection,
-  set: (val) => { store.appLayoutDirection = val as LayoutDirection; },
-});
+const { setCenter, viewport, fitView, updateNodeInternals } = useVueFlow();
 
-const layoutDirectionOptions = computed(() =>
-  store.LAYOUT_DIRECTIONS.map(d => ({
-    label: t(`settings.layoutDirection_${d}`),
-    value: d,
-  }))
-);
-
-const { setCenter, viewport, fitView } = useVueFlow();
-
-const nodeTypes: any = { item: markRaw(ItemNode), group: markRaw(GroupNode) };
+// Vue Flow 的注册表类型按通用 NodeProps/EdgeProps 建模；本地 SFC 使用更窄的业务 props，
+// 因此只在注册表边界做 unknown 转换，运行时仍交由 Vue Flow 传入标准节点和边属性。
+const nodeTypes = { item: markRaw(ItemNode), group: markRaw(GroupNode) } as unknown as NodeTypesObject;
+const edgeTypes = { recipe: markRaw(RecipeEdge) } as unknown as EdgeTypesObject;
 
 const defaultEdgeOptions = {
-  type: store.appEdgeStyle,
+  type: 'recipe',
   animated: true,
-  style: { stroke: '#64748b', strokeWidth: 2, opacity: 0.8 },
+  style: { stroke: 'var(--text-dimmed)', strokeWidth: 2, opacity: 0.8 },
 };
 
-// --- Provide isConnecting for ItemNode ---
+// 向 ItemNode 注入当前连线状态，使节点能在拖拽连线期间切换悬停反馈。
 const isConnecting = ref(false);
 provide('isConnecting', isConnecting);
 
-// --- Local nodes/edges for Vue Flow ---
+// 本地维护 Vue Flow 渲染用节点和边，store 仍是业务数据的唯一来源。
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const nodes = ref<any[]>([]);
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const edges = ref<any[]>([]);
 
-// --- Orphan detection ---
+// 该函数检测节点是否没有任何输入输出边，用于在画布上标记孤立节点。
 function isOrphan(nodeId: string): boolean {
   const hasIncoming = store.edges.some(e => e.target === nodeId);
   const hasOutgoing = store.edges.some(e => e.source === nodeId);
   return !hasIncoming && !hasOutgoing;
 }
 
-// --- Build Vue Flow objects from store ---
+// 该函数从 store 生成 Vue Flow 可渲染对象，并在初次进入画布时执行自动布局。
 function applyLayout() {
   // 初始化布局不写入 undo 历史，避免加载示例数据后用户第一次撤销就回到导入前的自动排列状态。
   applySugiyamaLayout(store.appLayoutDirection, false);
@@ -288,16 +273,23 @@ function applyLayout() {
 
 function relayout(direction?: LayoutDirection) {
   const dir = direction || store.appLayoutDirection;
-  const moved = applySugiyamaLayout(dir, true);
+  const shouldFitView = direction !== undefined;
 
-  if (!moved) return;
+  // 右键重布局方向同时也是当前画布显示方向；先写入 store，使端口方向和连线路由随重布局模式同步切换。
+  if (store.appLayoutDirection !== dir) {
+    store.appLayoutDirection = dir;
+  }
+
+  const moved = applySugiyamaLayout(dir, true);
 
   syncFromStore();
 
-  // 重布局后等待 Vue Flow 应用节点坐标，再执行视口适配以展示完整 DAG。
-  setTimeout(() => {
-    fitView({ duration: 400 });
-  }, 50);
+  if (moved || shouldFitView) {
+    // 重布局后等待 Vue Flow 应用节点坐标，再执行视口适配以展示完整 DAG。
+    setTimeout(() => {
+      fitView({ duration: 400 });
+    }, 50);
+  }
 }
 
 function applySugiyamaLayout(direction: LayoutDirection, recordHistory: boolean): boolean {
@@ -363,7 +355,7 @@ function syncFromStore() {
     }
   }
 
-  // Map node to its collapsed group for edge routing
+  // 建立子节点到折叠分组的映射，用于把折叠分组内外的边重定向到分组节点。
   const nodeToCollapsedGroup = new Map<string, string>();
   for (const group of store.groups) {
     if (group.collapsed) {
@@ -373,43 +365,77 @@ function syncFromStore() {
     }
   }
 
-  // Sync edges with rerouting
-  const newEdges = [];
+  // 先收集可见边，再按显示源节点计算 lane，避免同一源节点的多条输出边在出口段和标签上重合。
+  const visibleEdgeRows: Array<{
+    edge: FlowEdge;
+    displaySource: string;
+    displayTarget: string;
+    sourceHandle?: string;
+    targetHandle?: string;
+    laneKey: string;
+  }> = [];
+
   for (const se of store.edges) {
     const sourceGroup = nodeToCollapsedGroup.get(se.source);
     const targetGroup = nodeToCollapsedGroup.get(se.target);
 
-    // Hide internal edges inside a collapsed group
+    // 折叠分组内部的边由分组摘要表达，不再单独绘制。
     if (sourceGroup && targetGroup && sourceGroup === targetGroup) {
       continue;
     }
 
     const displaySource = sourceGroup || se.source;
     const displayTarget = targetGroup || se.target;
+    visibleEdgeRows.push({
+      edge: se,
+      displaySource,
+      displayTarget,
+      sourceHandle: sourceGroup ? undefined : 'source',
+      targetHandle: targetGroup ? undefined : (se.target_slot_id || undefined),
+      laneKey: `${displaySource}:${store.appEdgeStyle}`,
+    });
+  }
 
-    const edgeType = store.appEdgeStyle;
+  const laneCounts = new Map<string, number>();
+  for (const row of visibleEdgeRows) {
+    laneCounts.set(row.laneKey, (laneCounts.get(row.laneKey) ?? 0) + 1);
+  }
+
+  const laneIndices = new Map<string, number>();
+  const newEdges = visibleEdgeRows.map(row => {
+    const se = row.edge;
+    const laneIndex = laneIndices.get(row.laneKey) ?? 0;
+    laneIndices.set(row.laneKey, laneIndex + 1);
+
     const edgeStyle = se.edge_type === 'byproduct'
       ? { stroke: 'var(--accent-tan)', strokeWidth: 1.5, opacity: 0.7, strokeDasharray: '5,5' }
       : se.edge_type === 'catalyst'
         ? { stroke: 'var(--accent-blue)', strokeWidth: 2, opacity: 0.8 }
-        : { stroke: '#64748b', strokeWidth: 2, opacity: 0.8 };
+        : { stroke: 'var(--text-dimmed)', strokeWidth: 2, opacity: 0.8 };
     const animated = true;
 
-    newEdges.push({
+    return {
       id: se.id,
-      source: displaySource,
-      target: displayTarget,
-      sourceHandle: sourceGroup ? undefined : 'source',
-      targetHandle: targetGroup ? undefined : se.target_slot_id,
-      type: edgeType,
+      source: row.displaySource,
+      target: row.displayTarget,
+      sourceHandle: row.sourceHandle,
+      targetHandle: row.targetHandle,
+      type: 'recipe',
       animated,
       label: `x${se.quantity}`,
       style: edgeStyle,
-    });
-  }
+      data: {
+        edgeStyle: store.appEdgeStyle,
+        edgeType: se.edge_type,
+        layoutDirection: store.appLayoutDirection,
+        laneIndex,
+        laneCount: laneCounts.get(row.laneKey) ?? 1,
+      },
+    };
+  });
   edges.value = newEdges;
 
-  // Handle group nodes
+  // 同步分组节点本体，折叠分组会作为边的显示端点参与连接。
   const groupIds = new Set(store.groups.map(g => g.id));
 
   // Determine hidden children (only children of collapsed groups)
@@ -494,10 +520,35 @@ function syncFromStore() {
 
 // Watch for structural changes
 watch(
-  () => [store.nodes.length, store.edges.length, store.changeCounter, store.groups.length, store.appEdgeStyle],
+  () => [store.nodes.length, store.edges.length, store.changeCounter, store.groups.length, store.appEdgeStyle, store.appLayoutDirection],
   () => { syncFromStore(); },
   { flush: 'sync' },
 );
+
+// 布局方向会改变 Handle 的真实边缘位置；等待节点 DOM 更新后重新测量端口，避免连线仍使用旧出入点。
+watch(
+  () => store.appLayoutDirection,
+  async () => {
+    await nextTick();
+    await waitForLayoutFrame();
+    const ids = nodes.value.map((node: any) => node.id);
+    if (ids.length > 0) {
+      updateNodeInternals(ids);
+      await nextTick();
+      syncFromStore();
+    }
+  },
+  { flush: 'post' },
+);
+
+// 该函数等待浏览器完成一帧布局计算，使 Vue Flow 重测端口时能读取到重建后 Handle 的最终几何信息。
+function waitForLayoutFrame(): Promise<void> {
+  if (typeof window === 'undefined' || typeof window.requestAnimationFrame !== 'function') {
+    return Promise.resolve();
+  }
+
+  return new Promise(resolve => window.requestAnimationFrame(() => resolve()));
+}
 
 // BOM hover highlighting on canvas nodes
 watch(
@@ -1341,14 +1392,14 @@ function onKeydown(e: KeyboardEvent) {
 }
 
 // --- Lifecycle ---
-onMounted(() => {
-  // Init file service (auto-save, etc.) — does nothing in browser mode
-  initFileService();
+onMounted(async () => {
+  // 初始化文件服务；Tauri 环境会尝试恢复上次打开的项目，浏览器环境会返回 false。
+  const restoredProject = await initFileService();
 
-  // Seed mock data only when not in Tauri (browser dev mode)
-  // In Tauri, the app starts with an empty project; use Ctrl+O to open a file
+  // 仅浏览器开发环境注入示例数据；Tauri 已恢复项目时保留磁盘中的节点位置，不执行自动重布局。
   const isTauri = '__TAURI_INTERNALS__' in window || '__TAURI__' in window;
-  if (!isTauri) {
+  const shouldSeedMock = !isTauri && !restoredProject;
+  if (shouldSeedMock) {
     store.seedData({
       nodes: mockNodes,
       edges: mockEdges,
@@ -1356,8 +1407,8 @@ onMounted(() => {
       global_effects: mockGlobalEffects,
       proliferators: mockProliferators,
     });
+    applyLayout();
   }
-  applyLayout();
   syncFromStore();
 
   // Keyboard listener on window (for shortcuts even when canvas not focused)

@@ -14,10 +14,12 @@
     @drop.prevent="onDropNode"
   >
     <Handle
+      :key="`source-${handlePositions.sourcePosition}`"
       type="source"
-      :position="Position.Top"
+      :position="handlePositions.sourcePosition"
       id="source"
       class="source-handle"
+      :style="sourceHandleStyle"
       :connectable-end="false"
     />
 
@@ -27,30 +29,31 @@
       <span class="node-name">{{ data.name }}</span>
     </div>
 
-    <!-- Collapsed state: invisible handles so Vue Flow knows the node has them -->
+    <!-- 折叠态保留不可见目标端口，使 Vue Flow 能持续识别该节点可入线。 -->
     <template v-if="!isDragHovered && !renameSlotId">
       <Handle
         v-for="slot in data.slots"
-        :key="slot.id"
+        :key="`${slot.id}-${handlePositions.targetPosition}`"
         type="target"
-        :position="Position.Bottom"
+        :position="handlePositions.targetPosition"
         :id="slot.id"
         class="target-handle collapsed-dot"
-        :style="collapsedDotStyle()"
+        :style="collapsedDotStyle"
         :connectable-start="false"
       />
       <Handle
+        :key="`new-slot-${handlePositions.targetPosition}`"
         type="target"
-        :position="Position.Bottom"
+        :position="handlePositions.targetPosition"
         id="__new_slot__"
         class="target-handle collapsed-dot"
         :style="collapsedNewDotStyle"
         :connectable-start="false"
       />
-      <div v-if="data.slots.length > 0" class="target-bar"></div>
+      <div v-if="data.slots.length > 0" class="target-bar" :style="targetBarStyle"></div>
     </template>
 
-    <!-- Expanded: slot picker panel with handles embedded in each row -->
+    <!-- 展开态把目标端口嵌入槽位行，使拖拽连线可以精确落到指定配方槽。 -->
     <div v-else class="slot-panel">
       <div class="panel-header">{{ $t('itemNode.dropOnSlot') }}</div>
 
@@ -76,10 +79,12 @@
         </template>
         <Handle
           v-if="!renameSlotId"
+          :key="`${slot.id}-slot-${handlePositions.targetPosition}`"
           type="target"
-          :position="Position.Bottom"
+          :position="handlePositions.targetPosition"
           :id="slot.id"
           class="slot-handle"
+          :style="slotHandleStyle"
           :connectable-start="false"
         />
       </div>
@@ -90,10 +95,12 @@
         <span class="new-slot-plus">+</span>
         <span class="new-slot-label">{{ $t('itemNode.newSlot') }}</span>
         <Handle
+          :key="`new-slot-row-${handlePositions.targetPosition}`"
           type="target"
-          :position="Position.Bottom"
+          :position="handlePositions.targetPosition"
           id="__new_slot__"
           class="slot-handle new-slot-handle"
+          :style="slotHandleStyle"
           :connectable-start="false"
         />
       </div>
@@ -103,10 +110,12 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, inject, nextTick, type Ref } from 'vue';
-import { Handle, Position } from '@vue-flow/core';
+import { Handle } from '@vue-flow/core';
 import { useI18n } from 'vue-i18n';
 import type { ItemNode } from '../store';
 import { useStore } from '../store';
+import { getDirectionHandlePositions } from '../layout/edge-routing';
+import { getCenteredHandleStyle, getSlotHandleStyle, getTargetBarStyle } from '../layout/handle-position';
 
 const { t } = useI18n();
 
@@ -123,8 +132,14 @@ const isConnecting = inject<Ref<boolean>>('isConnecting', ref(false));
 const isDragHovered = ref(false);
 const isMachineDragHovered = ref(false);
 const iconIsImage = computed(() => props.data.icon?.startsWith('data:image/') ?? false);
+const handlePositions = computed(() => getDirectionHandlePositions(store.appLayoutDirection));
+const sourceHandleStyle = computed(() => getCenteredHandleStyle(handlePositions.value.sourcePosition, '-8px', 16));
+const collapsedDotStyle = computed(() => getCenteredHandleStyle(handlePositions.value.targetPosition, '-4px', 8));
+const collapsedNewDotStyle = computed(() => getCenteredHandleStyle(handlePositions.value.targetPosition, '-4px', 8));
+const slotHandleStyle = computed(() => getSlotHandleStyle(handlePositions.value.targetPosition));
+const targetBarStyle = computed(() => getTargetBarStyle(handlePositions.value.targetPosition));
 
-// New slot inline rename
+// 新建配方槽位进入行内重命名状态，直到用户确认或失焦后写回 store。
 const renameSlotId = ref<string | null>(null);
 const renameValue = ref('');
 
@@ -158,7 +173,7 @@ function onDropNode(event: DragEvent) {
       event.stopPropagation();
     }
   } catch (e) {
-    // ignore
+    // 拖拽数据不是可识别的机器载荷时忽略，避免外部拖拽内容打断节点操作。
   }
 }
 
@@ -179,14 +194,7 @@ watch(isConnecting, (v) => {
   }
 });
 
-// Collapsed dot positioning — display all target endpoints at Center (50%)
-function collapsedDotStyle(): Record<string, string> {
-  return { left: '50%' };
-}
-
-const collapsedNewDotStyle = computed(() => ({ left: '50%' }));
-
-// Detect new slots created via the "+ New Slot" handle (named '__new__') and enter rename mode
+// 监听由“+ New Slot”端口创建的哨兵槽位，并把它立即切换到行内重命名流程。
 watch(() => props.data.slots.map(s => s.name), (names) => {
   const idx = names.indexOf('__new__');
   if (idx !== -1 && renameSlotId.value !== props.data.slots[idx]?.id) {
@@ -241,18 +249,6 @@ function cancelRename() {
   transition: all var(--transition-fast) var(--ease-smooth);
 }
 
-.item-node::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 10px;
-  height: 100%;
-  background-color: var(--node-color);
-  mask-image: linear-gradient(to right, black, transparent);
-  -webkit-mask-image: linear-gradient(to right, black, transparent);
-}
-
 .item-node:hover {
   transform: translate(-4px, -4px);
   box-shadow: var(--shadow-node-hover);
@@ -273,7 +269,7 @@ function cancelRename() {
   opacity: 0.6;
 }
 
-/* Node label */
+/* 节点名称区域 */
 .node-label {
   display: flex;
   align-items: center;
@@ -306,59 +302,64 @@ function cancelRename() {
   white-space: nowrap;
 }
 
-/* Collapsed target bar */
+/* 折叠态目标提示条 */
 .target-bar {
   position: absolute;
-  bottom: -4px;
-  left: 20%;
-  right: 20%;
-  height: 8px;
   background: var(--node-color);
   border: var(--border-width-sm) solid var(--border-default);
   transition: all var(--transition-fast);
 }
 
-/* Collapsed invisible dots */
+/* 折叠态不可见端口 */
 .collapsed-dot {
   position: absolute;
-  bottom: -4px;
   width: 8px;
   height: 8px;
   opacity: 0;
   pointer-events: none;
 }
 
-/* Handles */
+/* 连接端口 */
 :deep(.vue-flow__handle) {
   transition: all var(--transition-fast) var(--ease-smooth);
 }
 
-/* Source handle */
+/* 源端口 */
 :deep(.vue-flow__handle.source-handle) {
   width: 16px;
   height: 16px;
   background-color: var(--node-color);
   border: var(--border-width-md) solid var(--border-default);
   top: -8px;
-  border-radius: var(--radius-sm); /* Using square handles for Bauhaus setup */
+  border-radius: var(--radius-sm); /* 使用方形端口以匹配 Bauhaus 风格。 */
   z-index: 3;
 }
-:deep(.vue-flow__handle.source-handle:hover) {
-  transform: rotate(45deg) scale(1.2);
+/* 源端口 hover 时保留 Vue Flow 方向类的居中位移，再叠加旋转缩放动画。 */
+:deep(.vue-flow__handle.source-handle.vue-flow__handle-top:hover) {
+  transform: translate(-50%, -50%) rotate(45deg) scale(1.2);
 }
 
-/* Slot handle */
+:deep(.vue-flow__handle.source-handle.vue-flow__handle-bottom:hover) {
+  transform: translate(-50%, 50%) rotate(45deg) scale(1.2);
+}
+
+:deep(.vue-flow__handle.source-handle.vue-flow__handle-left:hover) {
+  transform: translate(-50%, -50%) rotate(45deg) scale(1.2);
+}
+
+:deep(.vue-flow__handle.source-handle.vue-flow__handle-right:hover) {
+  transform: translate(50%, -50%) rotate(45deg) scale(1.2);
+}
+
+/* 槽位端口 */
 :deep(.vue-flow__handle.slot-handle) {
   position: absolute;
-  inset: 0 !important;
-  width: 100% !important;
-  height: 100% !important;
-  transform: none !important;
   background: transparent;
   border: none;
   box-shadow: none;
   border-radius: var(--radius-sm);
   z-index: 1;
+  transform: none;
 }
 :deep(.vue-flow__handle.slot-handle:hover),
 :deep(.vue-flow__handle.slot-handle.connecting) {
@@ -366,7 +367,7 @@ function cancelRename() {
   opacity: 0.1;
 }
 
-/* Slot panel */
+/* 槽位选择面板 */
 .slot-panel {
   position: absolute;
   top: calc(100% + var(--border-width-md));

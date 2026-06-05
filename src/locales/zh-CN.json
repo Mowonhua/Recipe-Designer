@@ -21,11 +21,7 @@
     "edgeStyle_default": "标准贝塞尔",
     "edgeStyle_straight": "直线",
     "edgeStyle_step": "直角折线",
-    "edgeStyle_smoothstep": "平滑阶梯",
-    "layoutDirection": "默认布局方向",
-    "layoutDirection_BT": "自底向上",
-    "layoutDirection_TB": "自顶向下",
-    "layoutDirection_LR": "自左向右"
+    "edgeStyle_smoothstep": "平滑阶梯"
   },
   "dict": {
     "title": "字典",

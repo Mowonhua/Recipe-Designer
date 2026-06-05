@@ -7,9 +7,10 @@ import type { State, Template } from '../store';
 
 const EXTENSION = 'grecipe';
 const FILTER_NAME = 'Recipe Designer Project';
+const RECENT_PROJECT_PATH_KEY = 'rd-current-project-path';
 export const EXTERNAL_CHANGE_EVENT = 'file-external-change';
 
-// Custom events for user feedback (Editor listens to these)
+// 文件操作通过全局事件把反馈交给 Editor 展示，避免服务层直接依赖 UI 组件。
 export const FILE_EVENT = 'file-operation';
 
 let currentFilePath: string | null = null;
@@ -22,7 +23,7 @@ let isTauriEnv = false;
 function detectTauri(): boolean {
   try {
     if (typeof window === 'undefined') return false;
-    // Tauri v2 injects __TAURI_INTERNALS__ into the webview
+    // Tauri v2 会在 WebView 注入运行时标记，用于区分桌面壳和浏览器开发环境。
     return '__TAURI_INTERNALS__' in window || '__TAURI__' in window;
   } catch {
     return false;
@@ -46,17 +47,16 @@ function updateTitle(store: ReturnType<typeof useStore>) {
     const dirtyMark = getDirty(store) ? ' *' : '';
     getCurrentWindow().setTitle(`${fileName}${dirtyMark} - Recipe Designer`);
   } catch {
-    // Not in Tauri runtime
+    // 非 Tauri 运行时或窗口 API 不可用时跳过标题更新。
   }
 }
 
-// --- Version Migration ---
+// --- 版本迁移 ---
 
 const CURRENT_VERSION = 1;
 
 const migrations: Record<number, (data: any) => any> = {
-  // When schema changes, add migration here:
-  // 1: (data) => { data.version = 2; ... return data; },
+  // 项目结构变更时在这里追加迁移函数，例如把 version 1 的数据提升到 version 2。
 };
 
 function migrateData(data: any): State {
@@ -71,7 +71,68 @@ function migrateData(data: any): State {
   return data as State;
 }
 
-// --- File Operations ---
+// --- 最近项目路径 ---
+
+function readRecentProjectPath(): string | null {
+  try {
+    return window.localStorage.getItem(RECENT_PROJECT_PATH_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function rememberProjectPath(path: string) {
+  try {
+    window.localStorage.setItem(RECENT_PROJECT_PATH_KEY, path);
+  } catch {
+    // localStorage 不可用时只影响刷新恢复，不影响当前项目读写。
+  }
+}
+
+function clearRecentProjectPath() {
+  try {
+    window.localStorage.removeItem(RECENT_PROJECT_PATH_KEY);
+  } catch {
+    // localStorage 不可用时没有可清理的持久状态。
+  }
+}
+
+// --- 项目载入 ---
+
+function applyProjectState(state: State): ReturnType<typeof useStore> {
+  const store = useStore();
+  store.seedData({
+    nodes: state.nodes || [],
+    edges: state.edges || [],
+    machines: state.machines || [],
+    global_effects: state.global_effects || [],
+    proliferators: state.proliferators || [],
+    groups: state.groups || [],
+    templates: state.templates || [],
+  });
+  if (state.meta) {
+    store.meta = { ...state.meta };
+  }
+  store.version = state.version || CURRENT_VERSION;
+  return store;
+}
+
+async function loadProjectFromPath(path: string): Promise<ReturnType<typeof useStore>> {
+  const content = await readTextFile(path);
+  const raw = JSON.parse(content);
+  const state = migrateData(raw);
+  return applyProjectState(state);
+}
+
+function activateProjectPath(path: string, store: ReturnType<typeof useStore>) {
+  currentFilePath = path;
+  lastSavedChangeCounter = store.changeCounter;
+  rememberProjectPath(path);
+  updateTitle(store);
+  startExternalMonitoring(path);
+}
+
+// --- 文件操作 ---
 
 export async function newProject(): Promise<void> {
   const store = useStore();
@@ -91,6 +152,7 @@ export async function newProject(): Promise<void> {
   currentFilePath = null;
   lastSavedChangeCounter = store.changeCounter;
   lastExternalMtime = null;
+  clearRecentProjectPath();
   stopExternalMonitoring();
   updateTitle(store);
   notify('success', 'fileService.newProject');
@@ -105,7 +167,7 @@ export async function openProject(): Promise<void> {
       multiple: false,
     });
 
-    if (!selected) return; // user cancelled
+    if (!selected) return; // 用户取消文件选择时保持当前项目不变。
 
     const path = typeof selected === 'string' ? selected : (selected as any)?.path;
     if (!path) {
@@ -113,28 +175,8 @@ export async function openProject(): Promise<void> {
       return;
     }
 
-    const content = await readTextFile(path);
-    const raw = JSON.parse(content);
-    const state = migrateData(raw);
-
-    const store = useStore();
-    store.seedData({
-      nodes: state.nodes || [],
-      edges: state.edges || [],
-      machines: state.machines || [],
-      global_effects: state.global_effects || [],
-      proliferators: state.proliferators || [],
-      templates: state.templates || [],
-    });
-    if (state.meta) {
-      store.meta = { ...state.meta };
-    }
-    store.version = state.version || CURRENT_VERSION;
-
-    currentFilePath = path;
-    lastSavedChangeCounter = store.changeCounter;
-    updateTitle(store);
-    startExternalMonitoring(path);
+    const store = await loadProjectFromPath(path);
+    activateProjectPath(path, store);
     notify('success', 'fileService.opened', { name: path.split(/[\\/]/).pop() || path });
   } catch (err: any) {
     notify('error', 'fileService.failedOpen', { error: err?.message || String(err) });
@@ -157,7 +199,7 @@ export async function saveProjectAs(): Promise<void> {
       filters: [{ name: FILTER_NAME, extensions: [EXTENSION] }],
     });
 
-    if (!selected) return; // user cancelled
+    if (!selected) return; // 用户取消保存路径选择时保持当前项目不变。
 
     const path = typeof selected === 'string' ? selected : (selected as any)?.path;
     if (!path) {
@@ -165,8 +207,11 @@ export async function saveProjectAs(): Promise<void> {
       return;
     }
 
-    currentFilePath = path;
     await writeProjectFile(path);
+    const store = useStore();
+    currentFilePath = path;
+    rememberProjectPath(path);
+    updateTitle(store);
     startExternalMonitoring(path);
   } catch (err: any) {
     notify('error', 'fileService.failedSave', { error: err?.message || String(err) });
@@ -179,14 +224,14 @@ async function writeProjectFile(path: string) {
 
   const store = useStore();
 
-  // .bak backup before overwriting
+  // 覆写前生成 .bak 备份，使保存失败或误写后仍可从上一版恢复。
   try {
     if (await exists(path)) {
       const content = await readTextFile(path);
       await writeTextFile(path + '.bak', content);
     }
   } catch {
-    // proceed even if backup fails
+    // 备份失败不阻断主保存流程，避免备份权限问题导致用户无法保存项目。
   }
 
   store.meta.updated = new Date().toISOString();
@@ -217,7 +262,7 @@ async function writeProjectFile(path: string) {
   notify('success', 'fileService.saved', { name: path.split(/[\\/]/).pop() || path });
 }
 
-// --- Auto Save ---
+// --- 自动保存 ---
 
 let autoSaveWatchStarted = false;
 
@@ -248,7 +293,7 @@ function scheduleAutoSave() {
   }, 2000);
 }
 
-// --- External Change Monitoring ---
+// --- 外部变更监控 ---
 
 function startExternalMonitoring(path: string) {
   stopExternalMonitoring();
@@ -269,7 +314,7 @@ function startExternalMonitoring(path: string) {
         window.dispatchEvent(new CustomEvent(EXTERNAL_CHANGE_EVENT, { detail: { path } }));
       }
     } catch {
-      // file may be deleted, ignore
+      // 文件可能已被外部删除，此处只停止本轮检查并保留当前内存项目。
     }
   }, 3000);
 }
@@ -285,19 +330,7 @@ function stopExternalMonitoring() {
 export async function reloadCurrentFile() {
   if (!currentFilePath || !isTauriEnv) return;
   try {
-    const content = await readTextFile(currentFilePath);
-    const raw = JSON.parse(content);
-    const state = migrateData(raw);
-    const store = useStore();
-    store.seedData({
-      nodes: state.nodes || [],
-      edges: state.edges || [],
-      machines: state.machines || [],
-      global_effects: state.global_effects || [],
-      proliferators: state.proliferators || [],
-      templates: state.templates || [],
-    });
-    store.meta = { ...state.meta };
+    const store = await loadProjectFromPath(currentFilePath);
     lastSavedChangeCounter = store.changeCounter;
     try {
       const info = await stat(currentFilePath);
@@ -312,18 +345,41 @@ export async function reloadCurrentFile() {
   }
 }
 
-// --- Init ---
+export async function restoreLastProject(): Promise<boolean> {
+  if (!isTauriEnv) return false;
+  const path = readRecentProjectPath();
+  if (!path) return false;
 
-export function initFileService() {
+  try {
+    if (!(await exists(path))) {
+      clearRecentProjectPath();
+      return false;
+    }
+
+    const store = await loadProjectFromPath(path);
+    activateProjectPath(path, store);
+    return true;
+  } catch (err: any) {
+    clearRecentProjectPath();
+    notify('error', 'fileService.failedReload', { error: err?.message || String(err) });
+    return false;
+  }
+}
+
+// --- 初始化 ---
+
+export async function initFileService(): Promise<boolean> {
   isTauriEnv = detectTauri();
   if (!isTauriEnv) {
     console.log('[file-service] Not in Tauri environment, file operations disabled');
-    return;
+    return false;
   }
+  const restored = await restoreLastProject();
   startAutoSave();
+  return restored;
 }
 
-// --- Template Persistence ---
+// --- 模板持久化 ---
 
 let templatesPath: string | null = null;
 
@@ -344,7 +400,7 @@ export async function loadTemplates(): Promise<Template[]> {
       return JSON.parse(content) as Template[];
     }
   } catch {
-    // No templates yet, return empty
+    // 模板文件不存在或无法读取时返回空列表，保持侧边栏可用。
   }
   return [];
 }
@@ -354,10 +410,10 @@ export async function saveTemplates(templates: Template[]): Promise<void> {
   try {
     const path = await getTemplatesPath();
     const dir = await appDataDir();
-    try { await mkdir(dir, { recursive: true }); } catch { /* dir may already exist */ }
+    try { await mkdir(dir, { recursive: true }); } catch { /* 模板目录已存在时无需重复创建。 */ }
     await writeTextFile(path, JSON.stringify(templates, null, 2));
   } catch {
-    // Failed to save templates
+    // 模板保存失败不影响主项目编辑流程。
   }
 }
 

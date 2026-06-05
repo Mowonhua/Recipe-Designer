@@ -1,8 +1,25 @@
 <template>
   <div :class="['group-node', { collapsed: data.collapsed }]">
-    <Handle v-if="data.collapsed" type="source" :position="Position.Top" id="source" class="source-handle" :connectable-end="false" />
-    <Handle v-if="data.collapsed" type="target" :position="Position.Bottom" class="target-handle collapsed-dot" :style="{ left: '50%' }" :connectable-start="false"/>
-    <!-- Header -->
+    <Handle
+      v-if="data.collapsed"
+      :key="`source-${handlePositions.sourcePosition}`"
+      type="source"
+      :position="handlePositions.sourcePosition"
+      id="source"
+      class="source-handle"
+      :style="sourceHandleStyle"
+      :connectable-end="false"
+    />
+    <Handle
+      v-if="data.collapsed"
+      :key="`target-${handlePositions.targetPosition}`"
+      type="target"
+      :position="handlePositions.targetPosition"
+      class="target-handle collapsed-dot"
+      :style="targetHandleStyle"
+      :connectable-start="false"
+    />
+    <!-- 分组头部区域，提供名称编辑和折叠切换入口。 -->
     <div class="group-header" @dblclick.stop="toggleCollapse">
       <span class="group-icon">📦</span>
       <input
@@ -21,7 +38,7 @@
       </button>
     </div>
 
-    <!-- Collapsed summary -->
+    <!-- 折叠摘要区域，展示分组聚合后的输入输出。 -->
     <div v-if="data.collapsed" class="group-summary">
       <div class="summary-col">
         <div class="summary-label">{{ $t('group.inputs') }}</div>
@@ -41,7 +58,7 @@
       </div>
     </div>
 
-    <!-- Footer hint -->
+    <!-- 底部提示区域，展示分组操作说明。 -->
     <div class="group-footer">
       <span class="hint">{{ $t('group.disbandHint') }}</span>
     </div>
@@ -49,10 +66,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, nextTick } from 'vue';
-import { Handle, Position } from '@vue-flow/core';
+import { computed, ref, onMounted, nextTick } from 'vue';
+import { Handle } from '@vue-flow/core';
 import { useI18n } from 'vue-i18n';
 import { useStore } from '../store';
+import { getDirectionHandlePositions } from '../layout/edge-routing';
+import { getCenteredHandleStyle, getTargetBarStyle } from '../layout/handle-position';
 
 const { t } = useI18n();
 
@@ -76,6 +95,9 @@ const store = useStore();
 const isEditingName = ref(props.data.isEditingName || false);
 const editNameValue = ref(props.data.name);
 const nameInput = ref<HTMLInputElement | null>(null);
+const handlePositions = computed(() => getDirectionHandlePositions(store.appLayoutDirection));
+const sourceHandleStyle = computed(() => getCenteredHandleStyle(handlePositions.value.sourcePosition, '-6px', 16));
+const targetHandleStyle = computed(() => getTargetBarStyle(handlePositions.value.targetPosition));
 
 function startEditName() {
   isEditingName.value = true;
@@ -105,7 +127,8 @@ onMounted(() => {
 });
 
 function toggleCollapse() {
-  if (isEditingName.value) return; // Prevent toggle when clicking to edit
+  // 编辑名称时阻止折叠切换，避免双击输入框同时触发布局状态变化。
+  if (isEditingName.value) return;
   store.toggleGroupCollapse(props.id);
 }
 
@@ -134,7 +157,7 @@ function getItemName(itemId: string): string {
   box-shadow: var(--shadow-group);
 }
 
-/* Handles */
+/* 连接端口 */
 :deep(.vue-flow__handle) {
   transition: all var(--transition-fast) var(--ease-smooth);
 }
@@ -145,12 +168,25 @@ function getItemName(itemId: string): string {
   background-color: var(--accent-link, #4488ff);
   border: var(--border-width-md, 2px) solid var(--border-default);
   top: -6px;
-  border-radius: var(--radius-sm); /* Using square handles for Bauhaus setup */
+  border-radius: var(--radius-sm); /* 使用方形端口以匹配 Bauhaus 风格。 */
   z-index: 3;
 }
 
-:deep(.vue-flow__handle.source-handle:hover) {
-  transform: rotate(45deg) scale(1.2);
+/* 源端口 hover 时保留 Vue Flow 方向类的居中位移，再叠加旋转缩放动画。 */
+:deep(.vue-flow__handle.source-handle.vue-flow__handle-top:hover) {
+  transform: translate(-50%, -50%) rotate(45deg) scale(1.2);
+}
+
+:deep(.vue-flow__handle.source-handle.vue-flow__handle-bottom:hover) {
+  transform: translate(-50%, 50%) rotate(45deg) scale(1.2);
+}
+
+:deep(.vue-flow__handle.source-handle.vue-flow__handle-left:hover) {
+  transform: translate(-50%, -50%) rotate(45deg) scale(1.2);
+}
+
+:deep(.vue-flow__handle.source-handle.vue-flow__handle-right:hover) {
+  transform: translate(50%, -50%) rotate(45deg) scale(1.2);
 }
 
 :deep(.vue-flow__handle.target-handle) {
@@ -159,7 +195,7 @@ function getItemName(itemId: string): string {
   border-radius: 0;
   background-color: var(--accent-link, #4488ff);
   border: var(--border-width-md, 2px) solid var(--border-default);
-  bottom: 4px;
+  transform: none;
 }
 
 .group-header {

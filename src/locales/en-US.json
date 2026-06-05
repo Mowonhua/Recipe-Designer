@@ -21,11 +21,7 @@
     "edgeStyle_default": "Default Bezier",
     "edgeStyle_straight": "Straight",
     "edgeStyle_step": "Step",
-    "edgeStyle_smoothstep": "Smooth Step",
-    "layoutDirection": "Default Layout Direction",
-    "layoutDirection_BT": "Bottom to Top",
-    "layoutDirection_TB": "Top to Bottom",
-    "layoutDirection_LR": "Left to Right"
+    "edgeStyle_smoothstep": "Smooth Step"
   },
   "dict": {
     "title": "Dictionary",

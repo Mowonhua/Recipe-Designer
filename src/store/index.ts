@@ -938,15 +938,16 @@ export const useStore = defineStore('recipe-designer', () => {
     };
   }
 
-  function seedData(data: { nodes: ItemNode[]; edges: FlowEdge[]; machines: Machine[]; global_effects?: GlobalEffect[]; proliferators?: Proliferator[]; templates?: Template[] }) {
+  function seedData(data: { nodes: ItemNode[]; edges: FlowEdge[]; machines: Machine[]; global_effects?: GlobalEffect[]; proliferators?: Proliferator[]; groups?: Group[]; templates?: Template[] }) {
     nodes.value = data.nodes;
     edges.value = data.edges;
     machines.value = data.machines;
     global_effects.value = data.global_effects || global_effects.value;
     proliferators.value = data.proliferators || proliferators.value;
+    groups.value = data.groups || [];
     templates.value = data.templates || [];
     rebuildTagPool();
-    // Clear history when seeding
+    // 种子数据代表一次完整项目载入，必须清空旧撤销栈以避免跨项目撤销。
     history.value = [];
     historyIndex.value = -1;
     changeCounter.value++;
