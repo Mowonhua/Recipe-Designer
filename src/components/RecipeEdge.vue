@@ -65,9 +65,6 @@ const labelStyle = computed(() => ({
 .recipe-edge-label {
   position: absolute;
   padding: 1px 5px;
-  border: var(--border-width-sm) solid var(--border-default);
-  border-radius: var(--radius-sm);
-  background: var(--bg-context);
   color: var(--text-primary);
   font-family: var(--font-mono);
   font-size: 10px;
@@ -75,7 +72,6 @@ const labelStyle = computed(() => ({
   line-height: 1.2;
   pointer-events: all;
   white-space: nowrap;
-  box-shadow: var(--shadow-node);
 }
 
 .recipe-edge-label.edge-byproduct {
@@ -87,10 +83,7 @@ const labelStyle = computed(() => ({
 }
 
 .recipe-edge-label.selection-label-highlight {
-  border-color: var(--accent-amber);
-  background: var(--accent-amber);
-  color: var(--border-default);
-  box-shadow: var(--shadow-node-hover);
+  color: var(--accent-amber);
 }
 
 .recipe-edge-label.selection-label-dimmed {
