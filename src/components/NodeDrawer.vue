@@ -49,19 +49,15 @@
           </div>
           <div class="form-group">
             <label>{{ $t('drawer.tags') }}</label>
-            <div class="tags-wrap">
-              <span v-for="(tag, i) in editTags" :key="i" class="tag-pill">
-                {{ tag }}
-                <span class="tag-remove close-icon" @click="removeTag(i)"></span>
-              </span>
-              <n-input
-                v-model:value="newTag"
-                size="tiny"
-                :placeholder="$t('drawer.addTag')"
-                class="tag-input-inline"
-                @keydown.enter.prevent="addTag"
-              />
-            </div>
+            <n-select
+              v-model:value="editTags"
+              :options="itemTagOptions"
+              multiple
+              filterable
+              tag
+              size="small"
+              :placeholder="$t('drawer.addTag')"
+            />
           </div>
           <div class="form-group">
             <label>{{ $t('drawer.rawMaterial') }}</label>
@@ -115,17 +111,15 @@
             </div>
             <div class="form-group">
               <label>{{ $t('drawer.tags') }}</label>
-              <div class="tags-wrap">
-                <span v-for="(tag, i) in (editSlots[slot.id].tags || [])" :key="i" class="tag-pill small">
-                  {{ tag }} <span class="tag-remove close-icon" @click="removeSlotTag(slot.id, i)"></span>
-                </span>
-                <input
-                  v-model="slotTagInputs[slot.id]"
-                  class="tag-input-native"
-                  :placeholder="$t('drawer.addSlotTag')"
-                  @keydown.enter.prevent="addSlotTag(slot.id)"
-                />
-              </div>
+              <n-select
+                v-model:value="editSlots[slot.id].tags"
+                :options="recipeTagOptions"
+                multiple
+                filterable
+                tag
+                size="small"
+                :placeholder="$t('drawer.addSlotTag')"
+              />
             </div>
             <div class="form-row">
               <div class="form-group flex-1">
@@ -329,6 +323,7 @@ import type { ItemNode, RecipeSlot, FlowEdge } from '../store';
 import { validateMachineRecipeMatch, type SlotValidationError } from '../store/slot-validator';
 import ConfirmDialog from './ConfirmDialog.vue';
 import { onNumberWheel } from '../composables/useWheelNumber';
+import { buildTagOptions, normalizeTagList } from '../utils/tags';
 
 const { t } = useI18n();
 
@@ -370,7 +365,6 @@ const editIcon = ref('');
 const editColor = ref('#3b82f6');
 const editTags = ref<string[]>([]);
 const editIsRaw = ref(false);
-const newTag = ref('');
 const fileInputEl = ref<HTMLInputElement | null>(null);
 const isEditIconImage = computed(() => editIcon.value.startsWith('data:image/'));
 
@@ -415,7 +409,6 @@ interface SlotEdit {
   secondary_outputs: { item_id: string; quantity: number; slot_index?: number }[];
 }
 const editSlots = reactive<Record<string, SlotEdit>>({});
-const slotTagInputs = reactive<Record<string, string>>({});
 const addingByproduct = reactive<Record<string, boolean>>({});
 const byproductSearch = reactive<Record<string, string>>({});
 const editingByproductQty = reactive<Record<string, boolean>>({});
@@ -484,9 +477,8 @@ function setByproductSlotIndex(slotId: string, index: number, value: string) {
 const colorPresets = ['#f0883e', '#58a6ff', '#3fb950', '#e0555a', '#a371f7', '#e6c34a', '#768390', '#f778ba'];
 
 watch(() => props.node, (n) => {
-  // Clear previous node's edit state
+  // 切换节点时清空上一节点的槽编辑态，避免旧槽数据混入当前节点。
   for (const key of Object.keys(editSlots)) { delete editSlots[key]; }
-  for (const key of Object.keys(slotTagInputs)) { delete slotTagInputs[key]; }
 
   if (n) {
     editName.value = n.name;
@@ -494,7 +486,6 @@ watch(() => props.node, (n) => {
     editColor.value = n.color || '#3b82f6';
     editTags.value = [...n.tags];
     editIsRaw.value = n.is_raw_material === true;
-    newTag.value = '';
     activeTab.value = 'properties';
   }
 }, { immediate: true });
@@ -503,22 +494,15 @@ function onUpdateShow(val: boolean) {
   if (!val) emit('update:visible', false);
 }
 
-function addTag() {
-  const tag = newTag.value.trim();
-  if (tag && !editTags.value.includes(tag)) {
-    editTags.value.push(tag);
-  }
-  newTag.value = '';
-}
-function removeTag(i: number) { editTags.value.splice(i, 1); }
-
 function saveProperties() {
   if (!props.node) return;
+  const normalizedTags = normalizeTagList(editTags.value);
+  editTags.value = normalizedTags;
   store.updateItem(props.node.id, {
     name: editName.value,
     icon: editIcon.value || undefined,
     color: editColor.value,
-    tags: editTags.value,
+    tags: normalizedTags,
     is_raw_material: editIsRaw.value ? true : null,
   });
 }
@@ -540,7 +524,6 @@ watch(() => props.node?.slots, (slots) => {
         catalyst_speed_multiplier: s.catalyst?.speed_multiplier || 1,
         secondary_outputs: [...s.secondary_outputs],
       };
-      slotTagInputs[s.id] = '';
     }
   }
 }, { immediate: true, deep: true });
@@ -548,22 +531,19 @@ watch(() => props.node?.slots, (slots) => {
 const machineOptions = computed(() =>
   store.machines.map(m => ({ label: m.name, value: m.id }))
 );
+const itemTagOptions = computed(() => {
+  // 物品属性标签只从物品标签池取候选项；新建值由 NSelect 的 tag 模式作为临时选项承载。
+  return buildTagOptions(store.tag_pool.item_tags);
+});
+const recipeTagOptions = computed(() => {
+  // 配方槽标签只从配方标签池取候选项；未保存的新建值不回灌进 options，避免下拉重复显示。
+  return buildTagOptions(store.tag_pool.recipe_tags);
+});
 const catalystModeOptions = computed(() => [
   { label: t('drawer.catalystNone'), value: 'none' as const },
   { label: t('drawer.catalystOptional'), value: 'optional' as const },
   { label: t('drawer.catalystRequired'), value: 'required' as const },
 ]);
-
-function addSlotTag(slotId: string) {
-  const tag = slotTagInputs[slotId]?.trim();
-  if (tag && editSlots[slotId] && !editSlots[slotId].tags.includes(tag)) {
-    editSlots[slotId].tags.push(tag);
-  }
-  slotTagInputs[slotId] = '';
-}
-function removeSlotTag(slotId: string, i: number) {
-  editSlots[slotId]?.tags.splice(i, 1);
-}
 
 function saveSlot(slotId: string) {
   const slot = props.node?.slots.find(s => s.id === slotId);
@@ -574,10 +554,11 @@ function saveSlot(slotId: string) {
   slot.time = edits.time;
   slot.primary_output_quantity = edits.primary_output_quantity;
   slot.machine_id = edits.machine_id;
-  slot.tags = edits.tags;
+  const normalizedTags = normalizeTagList(edits.tags);
+  edits.tags = normalizedTags;
+  slot.tags = normalizedTags;
   slot.catalyst_mode = edits.catalyst_mode;
-  // Manage catalyst edge: change edge type between 'input' and 'catalyst'
-  // First, revert any previous catalyst edge for this slot back to 'input'
+  // 催化剂模式会改变边类型；保存时先把该槽旧催化剂边恢复成普通输入边。
   const prevCatalystEdges = store.edges.filter(
     e => e.target === props.node!.id && e.target_slot_id === slotId && e.edge_type === 'catalyst',
   );
@@ -590,7 +571,7 @@ function saveSlot(slotId: string) {
       quantity: edits.catalyst_quantity || 1,
       speed_multiplier: edits.catalyst_speed_multiplier || undefined,
     };
-    // Change the matching input edge to catalyst type
+    // 当新催化剂物品已连接为输入边时，把对应输入边切换为催化剂边。
     const catalystEdge = store.edges.find(
       e => e.target === props.node!.id && e.target_slot_id === slotId && e.source === edits.catalyst_item_id && e.edge_type === 'input',
     );

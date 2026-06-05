@@ -60,7 +60,7 @@ function createProjectJson() {
     },
     global_effects: [],
     proliferators: [],
-    tag_pool: { recipe_tags: [], machine_tags: [] },
+    tag_pool: { item_tags: [], recipe_tags: [], machine_tags: [] },
     machines: [],
     nodes: [{
       id: 'iron-ore',

@@ -86,7 +86,7 @@ describe('Scenario 12: Cycle detection', () => {
       meta: { created: '', updated: '', game: 'test', viewport: { zoom: 1, center: { x: 0, y: 0 } } },
       global_effects: [],
       proliferators: [],
-      tag_pool: { recipe_tags: [], machine_tags: [] },
+      tag_pool: { item_tags: [], recipe_tags: [], machine_tags: [] },
       machines: [machine],
       nodes,
       edges,

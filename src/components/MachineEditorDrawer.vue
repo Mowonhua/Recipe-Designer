@@ -33,6 +33,7 @@
           v-model:value="form.tags"
           :options="machineTagOptions"
           multiple
+          filterable
           tag
           size="small"
         />
@@ -42,8 +43,9 @@
         <label>{{ $t('dict.allowedRecipeTags') }}</label>
         <n-select
           v-model:value="form.allowed_recipe_tags"
-          :options="allTagOptions"
+          :options="recipeTagOptions"
           multiple
+          filterable
           tag
           size="small"
         />
@@ -73,7 +75,7 @@
             <span class="slot-field-label">{{ $t('dict.lockedTag') }}</span>
             <n-select
               v-model:value="slot.locked_item_tag"
-              :options="allTagOptions"
+              :options="itemTagOptions"
               size="tiny"
               clearable
               style="width: 110px"
@@ -115,7 +117,7 @@
             <span class="slot-field-label">{{ $t('dict.lockedTag') }}</span>
             <n-select
               v-model:value="slot.locked_item_tag"
-              :options="allTagOptions"
+              :options="itemTagOptions"
               size="tiny"
               clearable
               style="width: 110px"
@@ -153,7 +155,7 @@
             <span class="slot-field-label">{{ $t('dict.lockedTag') }}</span>
             <n-select
               v-model:value="slot.locked_item_tag"
-              :options="allTagOptions"
+              :options="itemTagOptions"
               size="tiny"
               clearable
               style="width: 110px"
@@ -190,7 +192,7 @@
             <span class="slot-field-label">{{ $t('dict.lockedTag') }}</span>
             <n-select
               v-model:value="slot.locked_item_tag"
-              :options="allTagOptions"
+              :options="itemTagOptions"
               size="tiny"
               clearable
               style="width: 110px"
@@ -255,6 +257,7 @@ import { validateMachineSelf } from '../store/slot-validator';
 import type { SlotValidationError } from '../store/slot-validator';
 import ConfirmDialog from './ConfirmDialog.vue';
 import { onNumberWheel } from '../composables/useWheelNumber';
+import { buildTagOptions, buildTagOptionsWithCurrent, normalizeTag, normalizeTagList } from '../utils/tags';
 
 const { t } = useI18n();
 const store = useStore();
@@ -290,32 +293,25 @@ const form = reactive({
 
 const slots = ref<MachineSlot[]>([]);
 
-// --- Tag options ---
 const machineTagOptions = computed(() => {
-  const pool = [...store.tag_pool.machine_tags];
-  // Ensure currently-selected tags are in the options
-  for (const t of form.tags) {
-    if (!pool.includes(t) && t.trim()) pool.push(t.trim());
-  }
-  return pool.map(t => ({ label: t, value: t }));
+  // 机器标签下拉只读取机器标签池；新输入值由 NSelect 的 tag 模式作为临时选项承载。
+  return buildTagOptions(store.tag_pool.machine_tags);
 });
 
-const allTagOptions = computed(() => {
-  // Combine recipe_tags and machine_tags as a general tag pool
-  const poolSet = new Set([
-    ...store.tag_pool.recipe_tags,
-    ...store.tag_pool.machine_tags,
-    ...form.tags,
-  ]);
-  for (const t of form.allowed_recipe_tags) {
-    if (t.trim()) poolSet.add(t.trim());
-  }
+const recipeTagOptions = computed(() => {
+  // 机器允许配方标签只能选择或新建配方标签，不能混入机器标签池。
+  return buildTagOptions(store.tag_pool.recipe_tags);
+});
+
+const itemTagOptions = computed(() => {
+  const lockedTags: string[] = [];
   for (const s of slots.value) {
     if (s.locked_item_tag && s.locked_item_tag.trim()) {
-      poolSet.add(s.locked_item_tag.trim());
+      lockedTags.push(s.locked_item_tag);
     }
   }
-  return Array.from(poolSet).sort().map(t => ({ label: t, value: t }));
+  // 机器槽锁定标签约束物品流入流出，因此下拉选项来自物品标签池并保留当前已选锁定值。
+  return buildTagOptionsWithCurrent(store.tag_pool.item_tags, lockedTags);
 });
 
 // --- Slots grouped by type ---
@@ -416,15 +412,21 @@ function closeConfirmDialog() {
 // --- Validation ---
 const validationErrors = ref<SlotValidationError[]>([]);
 
-// --- Build a Machine object from the current form ---
+// --- 根据当前表单构造机器对象 ---
 function buildMachine(): Machine {
+  const normalizedSlots = structuredClone(toRaw(slots.value)).map(slot => {
+    // 锁定标签是可选约束；保存时空字符串还原为 undefined，非空值去除首尾空白。
+    const lockedTag = slot.locked_item_tag ? normalizeTag(slot.locked_item_tag) : '';
+    return { ...slot, locked_item_tag: lockedTag || undefined };
+  });
+
   return {
     id: props.machine?.id || uuidv4(),
     name: form.name,
     base_speed: form.base_speed,
-    tags: [...form.tags],
-    allowed_recipe_tags: [...form.allowed_recipe_tags],
-    slots: structuredClone(toRaw(slots.value)),
+    tags: normalizeTagList(form.tags),
+    allowed_recipe_tags: normalizeTagList(form.allowed_recipe_tags),
+    slots: normalizedSlots,
   };
 }
 

@@ -66,7 +66,8 @@ function computeOneTime(
   visited.add(visitKey);
 
   const assignedProliferator = getAssignedProliferator(state, request, slot);
-  const { yieldMultiplier, proliferatorMultiplier, globalYieldMultiplier } = computeMultipliers(state, slot, assignedProliferator?.multiplier ?? 1);
+  // 当前产物节点的物品标签参与配方产量效果匹配，使物品标签池中的全局效果能影响一次性生产计算。
+  const { yieldMultiplier, proliferatorMultiplier, globalYieldMultiplier } = computeMultipliers(state, slot, assignedProliferator?.multiplier ?? 1, node.tags);
   const outputPerExecution = slot.primary_output_quantity * yieldMultiplier;
   const executionCount = Math.ceil(request.targetQuantity / outputPerExecution);
   const totalProduced = executionCount * outputPerExecution;
@@ -232,7 +233,8 @@ function computeContinuous(
   visited.add(visitKey);
 
   const assignedProliferator = getAssignedProliferator(state, request, slot);
-  const { yieldMultiplier, speedMultiplier, proliferatorMultiplier, globalYieldMultiplier } = computeMultipliers(state, slot, assignedProliferator?.multiplier ?? 1);
+  // 当前产物节点的物品标签参与配方产量效果匹配，使物品标签池中的全局效果能影响连续生产计算。
+  const { yieldMultiplier, speedMultiplier, proliferatorMultiplier, globalYieldMultiplier } = computeMultipliers(state, slot, assignedProliferator?.multiplier ?? 1, node.tags);
 
   // All quantities in items/second internally; targetQuantity is items/minute from user
   const targetRatePerSec = request.targetQuantity / 60;

@@ -92,7 +92,8 @@ export class BomCache {
     }
 
     if (node) {
-      parts.push({ active_slot_id: node.active_slot_id });
+      // 当前节点标签会影响配方产量类全局效果的命中，因此必须进入缓存指纹。
+      parts.push({ active_slot_id: node.active_slot_id, tags: node.tags });
     }
 
     // Include edges targeting this node/slot
@@ -110,15 +111,16 @@ export class BomCache {
       }
     }
 
-    // Include relevant global effects
     if (slot) {
       const machine = state.machines.find(m => m.id === slot.machine_id);
-      const allTags = new Set([...slot.tags, ...(machine?.tags || [])]);
+      // 配方产量效果匹配物品、配方和机器标签；机器速度效果只匹配机器标签。
+      const yieldTags = new Set([...(node?.tags || []), ...slot.tags, ...(machine?.tags || [])]);
+      const machineTags = new Set(machine?.tags || []);
 
       const relevantEffects = state.global_effects
         .filter(e => e.enabled !== false)
-        .filter(e => e.type === 'recipe_yield' && e.target_tags.some(t => allTags.has(t))
-          || e.type === 'machine_speed' && e.target_tags.some(t => allTags.has(t)))
+        .filter(e => e.type === 'recipe_yield' && e.target_tags.some(t => yieldTags.has(t))
+          || e.type === 'machine_speed' && e.target_tags.some(t => machineTags.has(t)))
         .map(e => ({ id: e.id, multiplier: e.multiplier, enabled: e.enabled }));
       parts.push(relevantEffects);
 

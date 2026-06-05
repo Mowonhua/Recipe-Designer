@@ -90,9 +90,9 @@
                     :value="effect.target_tags"
                     multiple
                     filterable
-                    :options="targetTagOptions(effect.type)"
+                    :options="targetTagOptions"
                     size="small"
-                    @update:value="(value: string[]) => store.updateGlobalEffect(effect.id, { target_tags: value })"
+                    @update:value="(value: string[]) => store.updateGlobalEffect(effect.id, { target_tags: normalizeTagList(value) })"
                   />
                 </div>
               </div>
@@ -181,6 +181,7 @@ import { Plus, Trash2 } from 'lucide-vue-next';
 import { useI18n } from 'vue-i18n';
 import { useStore, type GlobalEffect } from '../store';
 import ConfirmDialog from './ConfirmDialog.vue';
+import { normalizeTagList, type TagOption } from '../utils/tags';
 
 defineProps<{ visible: boolean }>();
 
@@ -253,11 +254,21 @@ function closeConfirm() {
   confirmDialog.target = null;
 }
 
-function targetTagOptions(type: GlobalEffect['type']) {
-  const tags = type === 'recipe_yield'
-    ? store.tag_pool.recipe_tags
-    : store.tag_pool.machine_tags;
-  return tags.map(tag => ({ label: tag, value: tag }));
+const targetTagOptions = computed<TagOption[]>(() => {
+  // 全局效果目标标签从三个独立标签池中选择；选项文本保留分类前缀，保存值仍是标签本身。
+  return [
+    ...buildCategorizedTagOptions(t('gameSettings.itemTagGroup'), store.tag_pool.item_tags),
+    ...buildCategorizedTagOptions(t('gameSettings.recipeTagGroup'), store.tag_pool.recipe_tags),
+    ...buildCategorizedTagOptions(t('gameSettings.machineTagGroup'), store.tag_pool.machine_tags),
+  ];
+});
+
+function buildCategorizedTagOptions(groupLabel: string, tags: string[]): TagOption[] {
+  // 同一分类内先排序去重，再把分类名写入 label，确保下拉菜单稳定展示标签来源。
+  return normalizeTagList(tags).map(tag => ({
+    label: `${groupLabel} / ${tag}`,
+    value: tag,
+  }));
 }
 
 function itemOptions(currentId: string) {

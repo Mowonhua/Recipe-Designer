@@ -50,6 +50,7 @@ export interface Proliferator {
 }
 
 export interface TagPool {
+  item_tags: string[];
   recipe_tags: string[];
   machine_tags: string[];
 }
@@ -337,6 +338,17 @@ class SetActiveSlotCommand implements Command {
 
 const OFF_CANVAS = -9999;
 
+function addNormalizedTag(target: Set<string>, tag: string) {
+  // 标签池以去除首尾空白后的字符串作为唯一键；空标签不进入任何池。
+  const normalized = tag.trim();
+  if (normalized) target.add(normalized);
+}
+
+function sortTags(tags: Set<string>): string[] {
+  // 标签池输出保持稳定排序，避免同一项目在保存和界面刷新时出现无意义顺序抖动。
+  return Array.from(tags).sort((a, b) => a.localeCompare(b));
+}
+
 export const useStore = defineStore('recipe-designer', () => {
   const version = ref<number>(1);
   const meta = ref<ProjectMeta>({
@@ -358,7 +370,7 @@ export const useStore = defineStore('recipe-designer', () => {
 
   const global_effects = ref<GlobalEffect[]>([]);
   const proliferators = ref<Proliferator[]>([]);
-  const tag_pool = ref<TagPool>({ recipe_tags: [], machine_tags: [] });
+  const tag_pool = ref<TagPool>({ item_tags: [], recipe_tags: [], machine_tags: [] });
   const machines = ref<Machine[]>([]);
   const nodes = ref<ItemNode[]>([]);
   const edges = ref<FlowEdge[]>([]);
@@ -954,29 +966,38 @@ export const useStore = defineStore('recipe-designer', () => {
   }
 
   function rebuildTagPool() {
+    const itemTags = new Set<string>();
     const recipeTags = new Set<string>();
     const machineTags = new Set<string>();
 
+    // 节点属性标签进入物品标签池；该池只表达物品分类，不和配方或机器池做跨池去重。
     for (const node of nodes.value) {
+      for (const tag of node.tags) {
+        addNormalizedTag(itemTags, tag);
+      }
       for (const slot of node.slots) {
+        // 配方槽标签进入配方标签池，用于机器兼容性和配方产量类效果匹配。
         for (const tag of slot.tags) {
-          if (tag.trim()) recipeTags.add(tag.trim());
+          addNormalizedTag(recipeTags, tag);
         }
       }
     }
 
     for (const machine of machines.value) {
+      // 机器自身标签进入机器标签池；机器速度类效果只通过该来源命中机器。
       for (const tag of machine.tags) {
-        if (tag.trim()) machineTags.add(tag.trim());
+        addNormalizedTag(machineTags, tag);
       }
+      // 机器允许配方标签描述机器可接受的配方类型，因此归入配方标签池而不是机器标签池。
       for (const tag of machine.allowed_recipe_tags) {
-        if (tag.trim()) machineTags.add(tag.trim());
+        addNormalizedTag(recipeTags, tag);
       }
     }
 
     tag_pool.value = {
-      recipe_tags: Array.from(recipeTags).sort((a, b) => a.localeCompare(b)),
-      machine_tags: Array.from(machineTags).sort((a, b) => a.localeCompare(b)),
+      item_tags: sortTags(itemTags),
+      recipe_tags: sortTags(recipeTags),
+      machine_tags: sortTags(machineTags),
     };
   }
 
