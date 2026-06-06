@@ -18,10 +18,6 @@
 
 ---
 
-## 
-
-[toc]
-
 ## 📖 Overview
 
 **Recipe Designer** is a desktop application for visually designing, organizing, and analyzing complex factory production lines. Inspired by factory automation games, it lets you model items, machines, recipes, byproducts, catalysts, and global effects — then compute the full Bill of Materials (BOM) to understand exactly what raw resources and machines you need at every step.
