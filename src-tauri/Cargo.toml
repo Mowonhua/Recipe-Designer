@@ -1,5 +1,5 @@
 [package]
-name = "tauri-apprecipe-designer"
+name = "recipe-designer"
 version = "1.0.0"
 description = "A Tauri App"
 authors = ["you"]
@@ -9,7 +9,7 @@ edition = "2021"
 
 [lib]
 # `_lib` 后缀用于让库目标名与二进制目标名保持唯一，避免 Windows 平台上的 Cargo 目标名冲突。
-name = "tauri_apprecipe_designer_lib"
+name = "recipe_designer_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]

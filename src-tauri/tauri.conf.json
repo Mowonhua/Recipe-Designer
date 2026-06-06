@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "tauri-apprecipe-designer",
+  "productName": "recipe-designer",
   "version": "1.0.0",
   "identifier": "com.recipe.designer",
   "build": {
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "tauri-apprecipe-designer",
+        "title": "Recipe Designer",
         "width": 1280,
         "height": 720,
         "dragDropEnabled": false
