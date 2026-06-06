@@ -156,7 +156,7 @@ jobs:
 
       # tauri-action 会调用 Tauri CLI 构建原生包，并把生成的安装包上传到同一个 GitHub Release。
       - name: Build and publish Tauri bundles
-        uses: tauri-apps/tauri-action@v1
+        uses: tauri-apps/tauri-action@v0.6.2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
