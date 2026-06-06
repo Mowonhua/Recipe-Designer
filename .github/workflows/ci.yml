@@ -1,0 +1,73 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+# 只授予读取权限；CI 仅验证代码，不写入仓库、tag 或 Release。
+permissions:
+  contents: read
+
+# 同一分支的新提交会取消旧运行，避免过期构建继续占用 runner。
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Verify frontend and Tauri shell
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Linux runner 编译 Tauri 外壳时需要 WebKitGTK、AppIndicator、SVG 和打包工具链。
+      - name: Install Linux Tauri dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            build-essential \
+            curl \
+            wget \
+            file \
+            libxdo-dev \
+            libssl-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            patchelf
+
+      # npm 缓存以 package-lock.json 为键，确保依赖解析与锁文件保持一致。
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: npm
+
+      - name: Install Rust stable toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      # Rust 缓存限定到 src-tauri，避免前端 dist 或 node_modules 进入 Cargo 缓存范围。
+      - name: Cache Rust artifacts
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: ./src-tauri -> target
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Run unit tests
+        run: npm test
+
+      - name: Type-check and build frontend
+        run: npm run build
+
+      # --locked 保证 CI 使用提交中的 Cargo.lock，不在流水线内隐式漂移依赖版本。
+      - name: Check Rust backend
+        run: cargo check --manifest-path src-tauri/Cargo.toml --locked
+
+      - name: Check Rust formatting
+        run: cargo fmt --manifest-path src-tauri/Cargo.toml --all -- --check

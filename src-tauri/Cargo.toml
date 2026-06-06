@@ -1,16 +1,14 @@
 [package]
 name = "tauri-apprecipe-designer"
-version = "0.1.0"
+version = "1.0.0"
 description = "A Tauri App"
 authors = ["you"]
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+# Cargo 清单定义 Rust 包元数据、构建产物和依赖来源。
 
 [lib]
-# The `_lib` suffix may seem redundant but it is necessary
-# to make the lib name unique and wouldn't conflict with the bin name.
-# This seems to be only an issue on Windows, see https://github.com/rust-lang/cargo/issues/8519
+# `_lib` 后缀用于让库目标名与二进制目标名保持唯一，避免 Windows 平台上的 Cargo 目标名冲突。
 name = "tauri_apprecipe_designer_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
@@ -24,4 +22,3 @@ tauri-plugin-dialog = "2"
 tauri-plugin-fs = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-

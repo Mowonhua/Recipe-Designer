@@ -1,7 +1,14 @@
 docs/
 icons/
+# Tauri 打包需要 src-tauri/icons 中的应用图标，不能被通用 icons/ 规则忽略。
+!src-tauri/icons/
+!src-tauri/icons/**
 *.svg
 .*/
+# GitHub Actions 工作流需要纳入版本控制，因此从点目录忽略规则中恢复。
+!.github/
+!.github/workflows/
+!.github/workflows/*.yml
 __*__/
 !src/__tests__/
 !src/__tests__/**
